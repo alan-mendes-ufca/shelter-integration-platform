@@ -1,0 +1,11 @@
+name: Automated Tests
+on: pull_request
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install
+      - run: uv sync --group dev
+      - run: uv run pytest ./tests

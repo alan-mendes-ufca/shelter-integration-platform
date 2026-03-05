@@ -25,10 +25,10 @@ from flask import Blueprint, request, jsonify  # noqa: F401
 from app.models.abrigo import AbrigoModel, VagaModel  # noqa: F401
 
 # ─── Blueprint: Abrigo ────────────────────────────────────────────────────────
-abrigos_bp = Blueprint('abrigos', __name__, url_prefix='/abrigos')
+abrigos_bp = Blueprint("abrigos", __name__, url_prefix="/abrigos")
 
 
-@abrigos_bp.route('', methods=['POST'])
+@abrigos_bp.route("", methods=["POST"])
 def criar_abrigo():
     """
     POST /abrigos
@@ -52,10 +52,10 @@ def criar_abrigo():
                        Não permita que o frontend defina vagas_disponiveis diretamente.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@abrigos_bp.route('', methods=['GET'])
+@abrigos_bp.route("", methods=["GET"])
 def listar_abrigos():
     """
     GET /abrigos
@@ -75,14 +75,14 @@ def listar_abrigos():
                        Passe isso para AbrigoModel.listar(apenas_com_vagas).
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
 # ─── Blueprint: Vaga ──────────────────────────────────────────────────────────
-vagas_bp = Blueprint('vagas', __name__, url_prefix='/vagas')
+vagas_bp = Blueprint("vagas", __name__, url_prefix="/vagas")
 
 
-@vagas_bp.route('/entrada', methods=['POST'])
+@vagas_bp.route("/entrada", methods=["POST"])
 def registrar_entrada():
     """
     POST /vagas/entrada
@@ -107,10 +107,10 @@ def registrar_entrada():
                        mensagens amigáveis. Não deixe stack traces vazarem para o cliente.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@vagas_bp.route('/<int:vaga_id>/saida', methods=['PUT'])
+@vagas_bp.route("/<int:vaga_id>/saida", methods=["PUT"])
 def registrar_saida(vaga_id: int):
     """
     PUT /vagas/:id/saida
@@ -131,6 +131,4 @@ def registrar_saida(vaga_id: int):
                        Tente diferenciar os dois casos consultando a vaga antes.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
-
-
+    return jsonify({"erro": "Endpoint não implementado."}), 501

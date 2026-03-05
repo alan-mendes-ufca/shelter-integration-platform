@@ -27,13 +27,13 @@ Tabela de status HTTP que você vai usar muito:
 from flask import Blueprint, request, jsonify  # noqa: F401
 from app.models.pessoa_rua import PessoaRuaModel  # noqa: F401
 
-pessoas_bp = Blueprint('pessoas', __name__, url_prefix='/pessoas')
+pessoas_bp = Blueprint("pessoas", __name__, url_prefix="/pessoas")
 
 # Valores aceitos para o campo nivel_risco — definidos pelo ENUM no banco
-NIVEIS_RISCO_VALIDOS = {'baixo', 'medio', 'alto', 'critico'}
+NIVEIS_RISCO_VALIDOS = {"baixo", "medio", "alto", "critico"}
 
 
-@pessoas_bp.route('', methods=['POST'])
+@pessoas_bp.route("", methods=["POST"])
 def criar_pessoa():
     """
     POST /pessoas
@@ -77,10 +77,10 @@ def criar_pessoa():
     #
     # pessoa = PessoaRuaModel.criar(dados)
     # return jsonify(pessoa), 201
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@pessoas_bp.route('/<int:pessoa_id>', methods=['GET'])
+@pessoas_bp.route("/<int:pessoa_id>", methods=["GET"])
 def buscar_pessoa(pessoa_id: int):
     """
     GET /pessoas/:id
@@ -100,10 +100,10 @@ def buscar_pessoa(pessoa_id: int):
                        Se retornar None, devolva 404 com mensagem amigável.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@pessoas_bp.route('', methods=['GET'])
+@pessoas_bp.route("", methods=["GET"])
 def buscar_por_apelido():
     """
     GET /pessoas?apelido=X
@@ -124,10 +124,10 @@ def buscar_por_apelido():
                        Sempre retorne uma lista, mesmo se vazia — nunca retorne None.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@pessoas_bp.route('/<int:pessoa_id>', methods=['PUT'])
+@pessoas_bp.route("/<int:pessoa_id>", methods=["PUT"])
 def atualizar_pessoa(pessoa_id: int):
     """
     PUT /pessoas/:id
@@ -152,10 +152,10 @@ def atualizar_pessoa(pessoa_id: int):
                        Depois chame PessoaRuaModel.atualizar(pessoa_id, dados_merged).
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@pessoas_bp.route('/<int:pessoa_id>/risco', methods=['PUT'])
+@pessoas_bp.route("/<int:pessoa_id>/risco", methods=["PUT"])
 def atualizar_risco(pessoa_id: int):
     """
     PUT /pessoas/:id/risco
@@ -181,6 +181,4 @@ def atualizar_risco(pessoa_id: int):
                        válidos na mensagem de erro — isso ajuda muito o frontend.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
-
-
+    return jsonify({"erro": "Endpoint não implementado."}), 501

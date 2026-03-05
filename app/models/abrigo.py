@@ -88,7 +88,9 @@ class AbrigoModel:
                            com HTTP 409 Conflict.
         """
         # TODO: Implementar
-        raise NotImplementedError("AbrigoModel.decrementar_vaga() ainda não foi implementado.")
+        raise NotImplementedError(
+            "AbrigoModel.decrementar_vaga() ainda não foi implementado."
+        )
 
     @staticmethod
     def incrementar_vaga(abrigo_id: int) -> bool:
@@ -109,7 +111,9 @@ class AbrigoModel:
                            a capacidade, mas é boa prática verificar na aplicação também.
         """
         # TODO: Implementar
-        raise NotImplementedError("AbrigoModel.incrementar_vaga() ainda não foi implementado.")
+        raise NotImplementedError(
+            "AbrigoModel.incrementar_vaga() ainda não foi implementado."
+        )
 
 
 class VagaModel:
@@ -144,7 +148,9 @@ class VagaModel:
                            3. Se tudo OK, faça o INSERT em `vaga`.
         """
         # TODO: Implementar
-        raise NotImplementedError("VagaModel.registrar_entrada() ainda não foi implementado.")
+        raise NotImplementedError(
+            "VagaModel.registrar_entrada() ainda não foi implementado."
+        )
 
     @staticmethod
     def registrar_saida(vaga_id: int) -> dict | None:
@@ -168,6 +174,6 @@ class VagaModel:
                               devolver a vaga ao contador do abrigo.
         """
         # TODO: Implementar
-        raise NotImplementedError("VagaModel.registrar_saida() ainda não foi implementado.")
-
-
+        raise NotImplementedError(
+            "VagaModel.registrar_saida() ainda não foi implementado."
+        )

@@ -28,10 +28,10 @@ from app.models.prontuario import ProntuarioModel  # noqa: F401
 from app.models.consentimento import ConsentimentoModel  # noqa: F401
 
 # ─── Blueprint: Profissional ───────────────────────────────────────────────────
-profissionais_bp = Blueprint('profissionais', __name__, url_prefix='/profissionais')
+profissionais_bp = Blueprint("profissionais", __name__, url_prefix="/profissionais")
 
 
-@profissionais_bp.route('', methods=['POST'])
+@profissionais_bp.route("", methods=["POST"])
 def criar_profissional():
     """
     POST /profissionais
@@ -57,10 +57,10 @@ def criar_profissional():
                        e retorne 409 com mensagem amigável.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@profissionais_bp.route('/<int:profissional_id>', methods=['GET'])
+@profissionais_bp.route("/<int:profissional_id>", methods=["GET"])
 def buscar_profissional(profissional_id: int):
     """
     GET /profissionais/:id
@@ -79,14 +79,14 @@ def buscar_profissional(profissional_id: int):
                        Se retornar None, devolva 404.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
 # ─── Blueprint: Prontuário ─────────────────────────────────────────────────────
-prontuarios_bp = Blueprint('prontuarios', __name__, url_prefix='/prontuarios')
+prontuarios_bp = Blueprint("prontuarios", __name__, url_prefix="/prontuarios")
 
 
-@prontuarios_bp.route('', methods=['POST'])
+@prontuarios_bp.route("", methods=["POST"])
 def criar_prontuario():
     """
     POST /prontuarios
@@ -115,10 +115,10 @@ def criar_prontuario():
         5. Trate erro de UNIQUE (pessoa já tem prontuário) → 409 Conflict
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@prontuarios_bp.route('/<int:pessoa_id>', methods=['GET'])
+@prontuarios_bp.route("/<int:pessoa_id>", methods=["GET"])
 def buscar_prontuario(pessoa_id: int):
     """
     GET /prontuarios/:pessoa_id
@@ -142,10 +142,10 @@ def buscar_prontuario(pessoa_id: int):
         4. Retorne o prontuário completo com 200
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@prontuarios_bp.route('/<int:prontuario_id>', methods=['PUT'])
+@prontuarios_bp.route("/<int:prontuario_id>", methods=["PUT"])
 def atualizar_prontuario(prontuario_id: int):
     """
     PUT /prontuarios/:id
@@ -176,6 +176,4 @@ def atualizar_prontuario(prontuario_id: int):
                        4. Se OK → atualize.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
-
-
+    return jsonify({"erro": "Endpoint não implementado."}), 501

@@ -26,13 +26,15 @@ O ciclo de vida do status:
 from flask import Blueprint, request, jsonify  # noqa: F401
 from app.models.encaminhamento import EncaminhamentoModel  # noqa: F401
 
-encaminhamentos_bp = Blueprint('encaminhamentos', __name__, url_prefix='/encaminhamentos')
+encaminhamentos_bp = Blueprint(
+    "encaminhamentos", __name__, url_prefix="/encaminhamentos"
+)
 
 # Status válidos para o ciclo de vida do encaminhamento
-STATUS_VALIDOS = {'pendente', 'atendido', 'resolvido', 'cancelado'}
+STATUS_VALIDOS = {"pendente", "atendido", "resolvido", "cancelado"}
 
 
-@encaminhamentos_bp.route('', methods=['POST'])
+@encaminhamentos_bp.route("", methods=["POST"])
 def criar_encaminhamento():
     """
     POST /encaminhamentos
@@ -59,10 +61,10 @@ def criar_encaminhamento():
                        Então passe o dados completo (com 'tipo') para EncaminhamentoModel.criar().
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@encaminhamentos_bp.route('/<int:pessoa_id>', methods=['GET'])
+@encaminhamentos_bp.route("/<int:pessoa_id>", methods=["GET"])
 def listar_encaminhamentos_pessoa(pessoa_id: int):
     """
     GET /encaminhamentos/:pessoa_id
@@ -83,10 +85,10 @@ def listar_encaminhamentos_pessoa(pessoa_id: int):
                        na tabela encaminhamento.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@encaminhamentos_bp.route('', methods=['GET'])
+@encaminhamentos_bp.route("", methods=["GET"])
 def listar_por_status():
     """
     GET /encaminhamentos?status=pendente
@@ -105,10 +107,10 @@ def listar_por_status():
                        Retorne a lista de status válidos na mensagem de erro.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@encaminhamentos_bp.route('/<int:encaminhamento_id>/status', methods=['PUT'])
+@encaminhamentos_bp.route("/<int:encaminhamento_id>/status", methods=["PUT"])
 def atualizar_status(encaminhamento_id: int):
     """
     PUT /encaminhamentos/:id/status
@@ -133,10 +135,10 @@ def atualizar_status(encaminhamento_id: int):
                        3. Chame EncaminhamentoModel.atualizar_status() ou cancelar() conforme o caso.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@encaminhamentos_bp.route('/<int:encaminhamento_id>', methods=['DELETE'])
+@encaminhamentos_bp.route("/<int:encaminhamento_id>", methods=["DELETE"])
 def cancelar_encaminhamento(encaminhamento_id: int):
     """
     DELETE /encaminhamentos/:id
@@ -166,6 +168,4 @@ def cancelar_encaminhamento(encaminhamento_id: int):
                        Se retornar None → trate como 404 ou 409 conforme o contexto.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
-
-
+    return jsonify({"erro": "Endpoint não implementado."}), 501

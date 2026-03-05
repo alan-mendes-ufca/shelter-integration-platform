@@ -97,7 +97,9 @@ class ProntuarioModel:
                            { 'prontuario': {...}, 'atendimentos': [...], 'encaminhamentos': [...] }
         """
         # TODO: Implementar
-        raise NotImplementedError("ProntuarioModel.buscar_completo_por_pessoa() ainda não foi implementado.")
+        raise NotImplementedError(
+            "ProntuarioModel.buscar_completo_por_pessoa() ainda não foi implementado."
+        )
 
     @staticmethod
     def atualizar(prontuario_id: int, dados: dict) -> dict | None:
@@ -120,6 +122,6 @@ class ProntuarioModel:
                            Retorne o prontuário atualizado via SELECT após o UPDATE.
         """
         # TODO: Implementar
-        raise NotImplementedError("ProntuarioModel.atualizar() ainda não foi implementado.")
-
-
+        raise NotImplementedError(
+            "ProntuarioModel.atualizar() ainda não foi implementado."
+        )

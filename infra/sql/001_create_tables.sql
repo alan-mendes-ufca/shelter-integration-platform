@@ -23,9 +23,8 @@
 -- Se precisar recriar, use o script 002_drop_tables.sql antes.
 -- =============================================================================
 
--- Garante que estamos usando o banco correto
--- (o nome do banco vem da variável de ambiente MYSQL_DATABASE no .env)
-USE atendimento_db;
+-- O banco de dados é definido pela variável MYSQL_DATABASE no .env.
+-- Não é necessário 'USE' aqui — a conexão já aponta para o banco correto.
 
 -- =============================================================================
 -- TABELA: profissional
@@ -221,4 +220,3 @@ CREATE INDEX idx_atendimento_unidade   ON atendimento(unidade);
 CREATE INDEX idx_atendimento_data      ON atendimento(realizado_em);
 CREATE INDEX idx_encaminhamento_status ON encaminhamento(status);
 CREATE INDEX idx_vaga_status           ON vaga(status);
-

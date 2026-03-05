@@ -16,7 +16,7 @@
 --   mysql -u root -p atendimento_db < 001_create_tables.sql
 -- =============================================================================
 
-USE atendimento_db;
+-- O banco de dados é definido pela variável MYSQL_DATABASE no .env.
 
 -- Desativa checagem de FK temporariamente para facilitar o drop em massa
 SET FOREIGN_KEY_CHECKS = 0;
@@ -32,4 +32,3 @@ DROP TABLE IF EXISTS profissional;
 
 -- Reativa checagem de FK
 SET FOREIGN_KEY_CHECKS = 1;
-

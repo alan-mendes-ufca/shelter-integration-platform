@@ -46,7 +46,9 @@ class AtendimentoModel:
                            Valide isso no controller antes de chamar esse método.
         """
         # TODO: Implementar
-        raise NotImplementedError("AtendimentoModel.criar() ainda não foi implementado.")
+        raise NotImplementedError(
+            "AtendimentoModel.criar() ainda não foi implementado."
+        )
 
     @staticmethod
     def listar_por_pessoa(pessoa_id: int) -> list[dict]:
@@ -71,10 +73,14 @@ class AtendimentoModel:
                            Isso evita N+1 queries no controller.
         """
         # TODO: Implementar
-        raise NotImplementedError("AtendimentoModel.listar_por_pessoa() ainda não foi implementado.")
+        raise NotImplementedError(
+            "AtendimentoModel.listar_por_pessoa() ainda não foi implementado."
+        )
 
     @staticmethod
-    def listar_por_unidade_e_periodo(unidade: str, data_inicio: str, data_fim: str) -> list[dict]:
+    def listar_por_unidade_e_periodo(
+        unidade: str, data_inicio: str, data_fim: str
+    ) -> list[dict]:
         """
         Retorna atendimentos filtrados por unidade e período de datas.
 
@@ -94,7 +100,9 @@ class AtendimentoModel:
                            não coloque o % dentro do placeholder.
         """
         # TODO: Implementar
-        raise NotImplementedError("AtendimentoModel.listar_por_unidade_e_periodo() ainda não foi implementado.")
+        raise NotImplementedError(
+            "AtendimentoModel.listar_por_unidade_e_periodo() ainda não foi implementado."
+        )
 
     @staticmethod
     def atualizar(atendimento_id: int, dados: dict) -> dict | None:
@@ -116,7 +124,9 @@ class AtendimentoModel:
                            para registrar quem alterou o quê e quando.
         """
         # TODO: Implementar
-        raise NotImplementedError("AtendimentoModel.atualizar() ainda não foi implementado.")
+        raise NotImplementedError(
+            "AtendimentoModel.atualizar() ainda não foi implementado."
+        )
 
     @staticmethod
     def deletar(atendimento_id: int) -> bool:
@@ -138,6 +148,6 @@ class AtendimentoModel:
                            rowcount == 1 → sucesso → controller retorna 204 No Content.
         """
         # TODO: Implementar
-        raise NotImplementedError("AtendimentoModel.deletar() ainda não foi implementado.")
-
-
+        raise NotImplementedError(
+            "AtendimentoModel.deletar() ainda não foi implementado."
+        )
