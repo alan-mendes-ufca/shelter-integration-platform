@@ -55,7 +55,9 @@ class EncaminhamentoModel:
                            O status inicial é sempre 'pendente'.
         """
         # TODO: Implementar
-        raise NotImplementedError("EncaminhamentoModel.criar() ainda não foi implementado.")
+        raise NotImplementedError(
+            "EncaminhamentoModel.criar() ainda não foi implementado."
+        )
 
     @staticmethod
     def listar_por_pessoa(pessoa_id: int) -> list[dict]:
@@ -79,7 +81,9 @@ class EncaminhamentoModel:
                            ORDER BY enc.criado_em DESC
         """
         # TODO: Implementar
-        raise NotImplementedError("EncaminhamentoModel.listar_por_pessoa() ainda não foi implementado.")
+        raise NotImplementedError(
+            "EncaminhamentoModel.listar_por_pessoa() ainda não foi implementado."
+        )
 
     @staticmethod
     def listar_por_status(status: str) -> list[dict]:
@@ -97,7 +101,9 @@ class EncaminhamentoModel:
                            Valide o `status` no controller antes de chegar aqui.
         """
         # TODO: Implementar
-        raise NotImplementedError("EncaminhamentoModel.listar_por_status() ainda não foi implementado.")
+        raise NotImplementedError(
+            "EncaminhamentoModel.listar_por_status() ainda não foi implementado."
+        )
 
     @staticmethod
     def atualizar_status(encaminhamento_id: int, novo_status: str) -> dict | None:
@@ -120,7 +126,9 @@ class EncaminhamentoModel:
                            Aqui no model, apenas execute o UPDATE.
         """
         # TODO: Implementar
-        raise NotImplementedError("EncaminhamentoModel.atualizar_status() ainda não foi implementado.")
+        raise NotImplementedError(
+            "EncaminhamentoModel.atualizar_status() ainda não foi implementado."
+        )
 
     @staticmethod
     def cancelar(encaminhamento_id: int, motivo_cancelamento: str) -> dict | None:
@@ -145,6 +153,6 @@ class EncaminhamentoModel:
                            no controller com mensagem: "Encaminhamento já processado, não pode ser cancelado."
         """
         # TODO: Implementar
-        raise NotImplementedError("EncaminhamentoModel.cancelar() ainda não foi implementado.")
-
-
+        raise NotImplementedError(
+            "EncaminhamentoModel.cancelar() ainda não foi implementado."
+        )

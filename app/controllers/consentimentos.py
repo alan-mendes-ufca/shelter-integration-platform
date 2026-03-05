@@ -21,10 +21,10 @@ o acesso é bloqueado. Simples e elegante.
 from flask import Blueprint, request, jsonify  # noqa: F401
 from app.models.consentimento import ConsentimentoModel  # noqa: F401
 
-consentimentos_bp = Blueprint('consentimentos', __name__, url_prefix='/consentimentos')
+consentimentos_bp = Blueprint("consentimentos", __name__, url_prefix="/consentimentos")
 
 
-@consentimentos_bp.route('', methods=['POST'])
+@consentimentos_bp.route("", methods=["POST"])
 def registrar_consentimento():
     """
     POST /consentimentos
@@ -48,10 +48,10 @@ def registrar_consentimento():
                        Se retornar algo, devolva 409 com mensagem clara.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@consentimentos_bp.route('/<int:pessoa_id>', methods=['GET'])
+@consentimentos_bp.route("/<int:pessoa_id>", methods=["GET"])
 def verificar_consentimento(pessoa_id: int):
     """
     GET /consentimentos/:pessoa_id
@@ -73,10 +73,10 @@ def verificar_consentimento(pessoa_id: int):
                        não de erros inesperados.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@consentimentos_bp.route('/<int:consentimento_id>/revogar', methods=['PUT'])
+@consentimentos_bp.route("/<int:consentimento_id>/revogar", methods=["PUT"])
 def revogar_consentimento(consentimento_id: int):
     """
     PUT /consentimentos/:id/revogar
@@ -106,10 +106,10 @@ def revogar_consentimento(consentimento_id: int):
                        Diferencie os dois casos se conseguir (404 vs 409).
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@consentimentos_bp.route('/historico/<int:pessoa_id>', methods=['GET'])
+@consentimentos_bp.route("/historico/<int:pessoa_id>", methods=["GET"])
 def historico_consentimentos(pessoa_id: int):
     """
     GET /consentimentos/historico/:pessoa_id
@@ -128,6 +128,4 @@ def historico_consentimentos(pessoa_id: int):
                        Sempre retorne uma lista, mesmo vazia.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
-
-
+    return jsonify({"erro": "Endpoint não implementado."}), 501

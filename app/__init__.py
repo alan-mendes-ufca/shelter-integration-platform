@@ -46,13 +46,13 @@ def create_app():
     app.register_blueprint(blueprint_example)
 
     # ── Sistema de Atendimento ─────────────────────────────────────────────────
-    app.register_blueprint(pessoas_bp)           # GET/POST /pessoas
-    app.register_blueprint(consentimentos_bp)    # GET/POST /consentimentos
-    app.register_blueprint(atendimentos_bp)      # GET/POST /atendimentos
-    app.register_blueprint(profissionais_bp)     # GET/POST /profissionais
-    app.register_blueprint(prontuarios_bp)       # GET/POST /prontuarios
-    app.register_blueprint(abrigos_bp)           # GET/POST /abrigos
-    app.register_blueprint(vagas_bp)             # POST /vagas/entrada, PUT /vagas/:id/saida
-    app.register_blueprint(encaminhamentos_bp)   # GET/POST /encaminhamentos
+    app.register_blueprint(pessoas_bp)  # GET/POST /pessoas
+    app.register_blueprint(consentimentos_bp)  # GET/POST /consentimentos
+    app.register_blueprint(atendimentos_bp)  # GET/POST /atendimentos
+    app.register_blueprint(profissionais_bp)  # GET/POST /profissionais
+    app.register_blueprint(prontuarios_bp)  # GET/POST /prontuarios
+    app.register_blueprint(abrigos_bp)  # GET/POST /abrigos
+    app.register_blueprint(vagas_bp)  # POST /vagas/entrada, PUT /vagas/:id/saida
+    app.register_blueprint(encaminhamentos_bp)  # GET/POST /encaminhamentos
 
     return app

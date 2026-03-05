@@ -49,7 +49,9 @@ class ConsentimentoModel:
                            um erro com mensagem clara. Combine isso com o controller.
         """
         # TODO: Implementar
-        raise NotImplementedError("ConsentimentoModel.criar() ainda não foi implementado.")
+        raise NotImplementedError(
+            "ConsentimentoModel.criar() ainda não foi implementado."
+        )
 
     @staticmethod
     def buscar_ativo_por_pessoa(pessoa_id: int) -> dict | None:
@@ -69,7 +71,9 @@ class ConsentimentoModel:
                            Retorne result[0] se encontrar, None se a lista vier vazia.
         """
         # TODO: Implementar
-        raise NotImplementedError("ConsentimentoModel.buscar_ativo_por_pessoa() ainda não foi implementado.")
+        raise NotImplementedError(
+            "ConsentimentoModel.buscar_ativo_por_pessoa() ainda não foi implementado."
+        )
 
     @staticmethod
     def revogar(consentimento_id: int, observacao: str = None) -> dict | None:
@@ -95,7 +99,9 @@ class ConsentimentoModel:
                            Trate esse caso no controller retornando 404 ou 409.
         """
         # TODO: Implementar
-        raise NotImplementedError("ConsentimentoModel.revogar() ainda não foi implementado.")
+        raise NotImplementedError(
+            "ConsentimentoModel.revogar() ainda não foi implementado."
+        )
 
     @staticmethod
     def historico_por_pessoa(pessoa_id: int) -> list[dict]:
@@ -116,6 +122,6 @@ class ConsentimentoModel:
                            ORDER BY registrado_em DESC.
         """
         # TODO: Implementar
-        raise NotImplementedError("ConsentimentoModel.historico_por_pessoa() ainda não foi implementado.")
-
-
+        raise NotImplementedError(
+            "ConsentimentoModel.historico_por_pessoa() ainda não foi implementado."
+        )

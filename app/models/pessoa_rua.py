@@ -90,7 +90,9 @@ class PessoaRuaModel:
                            Se tiver resultado, retorne result[0].
         """
         # TODO: Implementar
-        raise NotImplementedError("PessoaRuaModel.buscar_por_id() ainda não foi implementado.")
+        raise NotImplementedError(
+            "PessoaRuaModel.buscar_por_id() ainda não foi implementado."
+        )
 
     @staticmethod
     def buscar_por_apelido(apelido: str) -> list[dict]:
@@ -112,7 +114,9 @@ class PessoaRuaModel:
                            Não coloque % dentro do %s — isso confunde o conector.
         """
         # TODO: Implementar
-        raise NotImplementedError("PessoaRuaModel.buscar_por_apelido() ainda não foi implementado.")
+        raise NotImplementedError(
+            "PessoaRuaModel.buscar_por_apelido() ainda não foi implementado."
+        )
 
     @staticmethod
     def atualizar(pessoa_id: int, dados: dict) -> dict | None:
@@ -134,7 +138,9 @@ class PessoaRuaModel:
         TODO (estagiário): Implementar UPDATE + SELECT para retornar o estado atual.
         """
         # TODO: Implementar
-        raise NotImplementedError("PessoaRuaModel.atualizar() ainda não foi implementado.")
+        raise NotImplementedError(
+            "PessoaRuaModel.atualizar() ainda não foi implementado."
+        )
 
     @staticmethod
     def atualizar_risco(pessoa_id: int, nivel_risco: str) -> dict | None:
@@ -157,6 +163,6 @@ class PessoaRuaModel:
                            com uma mensagem clara pro usuário.
         """
         # TODO: Implementar
-        raise NotImplementedError("PessoaRuaModel.atualizar_risco() ainda não foi implementado.")
-
-
+        raise NotImplementedError(
+            "PessoaRuaModel.atualizar_risco() ainda não foi implementado."
+        )

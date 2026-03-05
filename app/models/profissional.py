@@ -43,7 +43,9 @@ class ProfissionalModel:
                            retornando HTTP 409 Conflict com mensagem amigável.
         """
         # TODO: Implementar
-        raise NotImplementedError("ProfissionalModel.criar() ainda não foi implementado.")
+        raise NotImplementedError(
+            "ProfissionalModel.criar() ainda não foi implementado."
+        )
 
     @staticmethod
     def buscar_por_id(profissional_id: int) -> dict | None:
@@ -61,6 +63,6 @@ class ProfissionalModel:
                            não devem aparecer normalmente no sistema.
         """
         # TODO: Implementar
-        raise NotImplementedError("ProfissionalModel.buscar_por_id() ainda não foi implementado.")
-
-
+        raise NotImplementedError(
+            "ProfissionalModel.buscar_por_id() ainda não foi implementado."
+        )

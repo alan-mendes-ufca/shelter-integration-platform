@@ -18,13 +18,20 @@ Pontos de atenção:
 from flask import Blueprint, request, jsonify  # noqa: F401
 from app.models.atendimento import AtendimentoModel  # noqa: F401
 
-atendimentos_bp = Blueprint('atendimentos', __name__, url_prefix='/atendimentos')
+atendimentos_bp = Blueprint("atendimentos", __name__, url_prefix="/atendimentos")
 
 # Tipos de atendimento aceitos — espelham o ENUM do banco
-TIPOS_ATENDIMENTO_VALIDOS = {'escuta', 'alimentacao', 'banho', 'saude', 'juridico', 'outro'}
+TIPOS_ATENDIMENTO_VALIDOS = {
+    "escuta",
+    "alimentacao",
+    "banho",
+    "saude",
+    "juridico",
+    "outro",
+}
 
 
-@atendimentos_bp.route('', methods=['POST'])
+@atendimentos_bp.route("", methods=["POST"])
 def registrar_atendimento():
     """
     POST /atendimentos
@@ -52,10 +59,10 @@ def registrar_atendimento():
                        o tipo enviado seja inválido — ajuda muito o frontend.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@atendimentos_bp.route('/<int:pessoa_id>', methods=['GET'])
+@atendimentos_bp.route("/<int:pessoa_id>", methods=["GET"])
 def listar_atendimentos_pessoa(pessoa_id: int):
     """
     GET /atendimentos/:pessoa_id
@@ -74,10 +81,10 @@ def listar_atendimentos_pessoa(pessoa_id: int):
                        Sempre retorne 200 com lista, mesmo vazia.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@atendimentos_bp.route('', methods=['GET'])
+@atendimentos_bp.route("", methods=["GET"])
 def listar_atendimentos_por_filtro():
     """
     GET /atendimentos?unidade=X&data_inicio=Y&data_fim=Z
@@ -100,10 +107,10 @@ def listar_atendimentos_por_filtro():
                        e trate o erro genérico com um try/except retornando 400.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@atendimentos_bp.route('/<int:atendimento_id>', methods=['PUT'])
+@atendimentos_bp.route("/<int:atendimento_id>", methods=["PUT"])
 def atualizar_atendimento(atendimento_id: int):
     """
     PUT /atendimentos/:id
@@ -126,10 +133,10 @@ def atualizar_atendimento(atendimento_id: int):
                        depois chama o model para atualizar.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
+    return jsonify({"erro": "Endpoint não implementado."}), 501
 
 
-@atendimentos_bp.route('/<int:atendimento_id>', methods=['DELETE'])
+@atendimentos_bp.route("/<int:atendimento_id>", methods=["DELETE"])
 def deletar_atendimento(atendimento_id: int):
     """
     DELETE /atendimentos/:id
@@ -152,6 +159,4 @@ def deletar_atendimento(atendimento_id: int):
                        Não retorne JSON em deletions bem-sucedidas.
     """
     # TODO: Implementar
-    return jsonify({'erro': 'Endpoint não implementado.'}), 501
-
-
+    return jsonify({"erro": "Endpoint não implementado."}), 501

@@ -22,13 +22,12 @@ from .abrigo import AbrigoModel, VagaModel
 from .encaminhamento import EncaminhamentoModel
 
 __all__ = [
-    'PessoaRuaModel',
-    'ConsentimentoModel',
-    'AtendimentoModel',
-    'ProfissionalModel',
-    'ProntuarioModel',
-    'AbrigoModel',
-    'VagaModel',
-    'EncaminhamentoModel',
+    "PessoaRuaModel",
+    "ConsentimentoModel",
+    "AtendimentoModel",
+    "ProfissionalModel",
+    "ProntuarioModel",
+    "AbrigoModel",
+    "VagaModel",
+    "EncaminhamentoModel",
 ]
-
