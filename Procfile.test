@@ -1,0 +1,2 @@
+flask: PYTHONPATH=. uv run python run.py
+pytest: PYTHONPATH=. uv run pytest --tb=short -v
