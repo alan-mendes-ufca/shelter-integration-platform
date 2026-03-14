@@ -36,3 +36,13 @@ FlaskProject/
 ├── run.py                           # Ponto de entrada da aplicação
 └── README.md
 ```
+
+## Swagger / documentação da API
+
+A aplicação agora expõe documentação interativa via Swagger UI:
+
+- UI: `/docs/`
+- Spec JSON: `/openapi.json`
+
+A spec cobre os blueprints já registrados em `create_app()` e descreve o contrato esperado dos endpoints.
+Enquanto parte da API ainda retorna `501 Endpoint não implementado`, a documentação já serve como referência única para frontend, testes e evolução dos controllers.

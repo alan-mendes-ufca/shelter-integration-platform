@@ -27,6 +27,7 @@ from .controllers.atendimentos import atendimentos_bp
 from .controllers.prontuarios import profissionais_bp, prontuarios_bp
 from .controllers.abrigos import abrigos_bp, vagas_bp
 from .controllers.encaminhamentos import encaminhamentos_bp
+from .docs.swagger import init_swagger
 
 
 def create_app():
@@ -54,5 +55,7 @@ def create_app():
     app.register_blueprint(abrigos_bp)  # GET/POST /abrigos
     app.register_blueprint(vagas_bp)  # POST /vagas/entrada, PUT /vagas/:id/saida
     app.register_blueprint(encaminhamentos_bp)  # GET/POST /encaminhamentos
+
+    init_swagger(app)
 
     return app
