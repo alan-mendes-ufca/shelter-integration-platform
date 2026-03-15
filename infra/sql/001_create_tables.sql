@@ -139,15 +139,15 @@ CREATE TABLE IF NOT EXISTS atendimento (
     observacoes         TEXT,
     realizado_em        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     criado_em           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    atualizado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    atualizado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 
-    CONSTRAINT fk_atendimento_pessoa
-        FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id_pessoa_rua)
-        ON DELETE RESTRICT,
+    -- CONSTRAINT fk_atendimento_pessoa
+    --     FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id_pessoa_rua)
+    --     ON DELETE RESTRICT,
 
-    CONSTRAINT fk_atendimento_profissional
-        FOREIGN KEY (profissional_id) REFERENCES profissional(id_profissional)
-        ON DELETE RESTRICT
+    -- CONSTRAINT fk_atendimento_profissional
+    --     FOREIGN KEY (profissional_id) REFERENCES profissional(id_profissional)
+    --     ON DELETE RESTRICT
 );
 
 -- =============================================================================

@@ -59,15 +59,32 @@ def registrar_atendimento():
                        Inclua a lista de tipos válidos na mensagem de erro caso
                        o tipo enviado seja inválido — ajuda muito o frontend.
     """
-    # TODO: Implementar
+
+    required_fields = {"pessoa_id", "profissional_id", "tipo", "unidade"}
+
     data = request.get_json()
-    if data.keys() != ["pessoa_id", "profissional_id", "tipo", "unidade"]:
+
+    if not required_fields.issubset(set(data.keys())):
         raise ValidationError(
             message="Campos obrigatórios faltando ou extras presentes.",
             action="Verifique se 'pessoa_id', 'profissional_id', 'tipo' e 'unidade' estão presentes e sem campos adicionais.",
         )
 
-    return jsonify({"erro": "Endpoint não implementado."}), 501
+    if data["tipo"] not in [
+        "escuta",
+        "alimentacao",
+        "banho",
+        "saude",
+        "juridico",
+        "outro",
+    ]:
+        raise ValidationError(
+            message="Campo de 'tipo' preenchido com opção inválida.",
+            action="Utilize somente uma das opção a seguir: 'escuta', 'alimentacao', 'banho', 'saude', 'juridico', 'outro'.",
+        )
+
+    registered_service = AtendimentoModel.register(data)
+    return jsonify(registered_service), 201
 
 
 @atendimentos_bp.route("/<int:pessoa_id>", methods=["GET"])

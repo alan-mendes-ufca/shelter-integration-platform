@@ -93,7 +93,9 @@ class PessoaRuaModel(Database):
             return cls.buscar_por_id(pessoa_id)
 
         valores.append(pessoa_id)
-        query_update = f"UPDATE pessoa_rua SET {', '.join(campos)} WHERE id_pessoa_rua = %s"
+        query_update = (
+            f"UPDATE pessoa_rua SET {', '.join(campos)} WHERE id_pessoa_rua = %s"
+        )
         params_update = tuple(valores)
 
         cls.query(query_update, params_update)
