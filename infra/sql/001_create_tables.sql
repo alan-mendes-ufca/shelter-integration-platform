@@ -27,39 +27,54 @@
 -- Não é necessário 'USE' aqui — a conexão já aponta para o banco correto.
 
 -- =============================================================================
+-- TABELA: pessoa
+-- Representa os USUÁRIOS do sistema (profissionais e gestores).
+-- Contém as informações básicas de autenticação e identificação utilizadas
+-- para acesso à aplicação. Essa entidade funciona como base para a
+-- especialização em papéis do sistema, como profissional e gestor,
+-- permitindo rastreabilidade de ações (ex.: registro de atendimentos,
+-- encaminhamentos e atualizações no sistema).
+-- Diferente de `pessoa_rua`, esta tabela NÃO representa pessoas atendidas,
+-- mas sim os operadores do sistema.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS pessoa(
+    id_pessoa int  UNSIGNED AUTO_INCREMENT  PRIMARY KEY,
+    nome VARCHAR(120) NOT NULL,
+    senha VARCHAR(255) NOT NULL
+    );
+-- =============================================================================
 -- TABELA: profissional
 -- Representa os assistentes sociais, educadores e demais profissionais
 -- que operam o sistema. Todo atendimento e encaminhamento precisa ter
 -- um profissional responsável para manter rastreabilidade.
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS profissional (
-    id              INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
+    id_profissional INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
+    id_pessoa   INT     UNSIGNED    NOT NULL,
     nome            VARCHAR(150)    NOT NULL,
     registro        VARCHAR(50)     UNIQUE,         -- Ex: CRESS-12345 (pode ser nulo em cadastros provisórios)
     cargo           VARCHAR(100)    NOT NULL,        -- Ex: "Assistente Social", "Educador Social"
     email           VARCHAR(150)    UNIQUE NOT NULL,
     ativo           BOOLEAN         NOT NULL DEFAULT TRUE,
-    criado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+    criado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_pessoa) REFERENCES pessoa(id_pessoa)
+    );
 
 -- =============================================================================
 -- TABELA: pessoa_rua
 -- NÚCLEO ABSOLUTO do sistema. Toda jornada começa aqui.
--- Aceita cadastro provisório SEM documentos (apenas apelido + aparência).
+-- Aceita cadastro provisório SEM documentos (apenas apelido + descrição fisica).
 -- Isso garante que nenhum atendimento seja bloqueado por burocracia (US01).
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS pessoa_rua (
-    id              INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
-    apelido         VARCHAR(100)    NOT NULL,                -- Campo obrigatório mesmo sem documentos
-    nome_real       VARCHAR(150),                            -- Preenchido quando/se a pessoa informar
-    cpf             VARCHAR(14)     UNIQUE,                  -- UNIQUE mas nullable para cadastros provisórios
-    data_nascimento DATE,
-    genero          VARCHAR(50),
-    aparencia       TEXT            NOT NULL,                -- Descrição física para identificação sem documentos
-    endereco_ref    VARCHAR(255),                            -- Ponto de referência onde costuma ficar
-    nivel_risco     ENUM('baixo','medio','alto','critico') NOT NULL DEFAULT 'baixo',  -- Alimenta US06
-    criado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    atualizado_em   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS pessoa_rua(
+    id_pessoa_rua INT UNSIGNED AUTO_INCREMENT,
+    apelido VARCHAR(100) NOT NULL,
+    descricao_fisica VARCHAR(255) NOT NULL,
+    nome_civil VARCHAR(120),
+    cpf_opcional VARCHAR(11) UNIQUE,
+    nivel_risco ENUM('baixo','medio','alto','critico')  NOT NULL DEFAULT 'medio',
+    PRIMARY KEY (id_pessoa_rua)
 );
 
 -- =============================================================================
@@ -78,7 +93,7 @@ CREATE TABLE IF NOT EXISTS consentimento (
     observacao      TEXT,                                    -- Contexto do consentimento ou revogação
 
     CONSTRAINT fk_consentimento_pessoa
-        FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id)
+        FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id_pessoa_rua)
         ON DELETE RESTRICT                                   -- Não permite deletar pessoa com consentimento
 );
 
@@ -99,7 +114,7 @@ CREATE TABLE IF NOT EXISTS prontuario (
     atualizado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_prontuario_pessoa
-        FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id)
+        FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id_pessoa_rua)
         ON DELETE RESTRICT,
 
     CONSTRAINT fk_prontuario_consentimento
@@ -126,11 +141,11 @@ CREATE TABLE IF NOT EXISTS atendimento (
     atualizado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_atendimento_pessoa
-        FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id)
+        FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id_pessoa_rua)
         ON DELETE RESTRICT,
 
     CONSTRAINT fk_atendimento_profissional
-        FOREIGN KEY (profissional_id) REFERENCES profissional(id)
+        FOREIGN KEY (profissional_id) REFERENCES profissional(id_profissional)
         ON DELETE RESTRICT
 );
 
@@ -170,7 +185,7 @@ CREATE TABLE IF NOT EXISTS vaga (
     saida_em        DATETIME,                               -- Preenchido no PUT /vagas/:id/saida
 
     CONSTRAINT fk_vaga_pessoa
-        FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id)
+        FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id_pessoa_rua)
         ON DELETE RESTRICT,
 
     CONSTRAINT fk_vaga_abrigo
@@ -213,7 +228,7 @@ CREATE TABLE IF NOT EXISTS encaminhamento (
 -- que aparecem em WHERE, JOIN ou ORDER BY com frequência.
 -- =============================================================================
 CREATE INDEX idx_pessoa_apelido        ON pessoa_rua(apelido);
-CREATE INDEX idx_pessoa_cpf            ON pessoa_rua(cpf);
+CREATE INDEX idx_pessoa_cpf            ON pessoa_rua(cpf_opcional);
 CREATE INDEX idx_consentimento_pessoa  ON consentimento(pessoa_id);
 CREATE INDEX idx_atendimento_pessoa    ON atendimento(pessoa_id);
 CREATE INDEX idx_atendimento_unidade   ON atendimento(unidade);
