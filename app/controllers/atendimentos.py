@@ -17,6 +17,7 @@ Pontos de atenção:
 
 from flask import Blueprint, request, jsonify  # noqa: F401
 from app.models.atendimento import AtendimentoModel  # noqa: F401
+from infra.erros import ValidationError
 
 atendimentos_bp = Blueprint("atendimentos", __name__, url_prefix="/atendimentos")
 
@@ -59,6 +60,13 @@ def registrar_atendimento():
                        o tipo enviado seja inválido — ajuda muito o frontend.
     """
     # TODO: Implementar
+    data = request.get_json()
+    if data.keys() != ["pessoa_id", "profissional_id", "tipo", "unidade"]:
+        raise ValidationError(
+            message="Campos obrigatórios faltando ou extras presentes.",
+            action="Verifique se 'pessoa_id', 'profissional_id', 'tipo' e 'unidade' estão presentes e sem campos adicionais.",
+        )
+
     return jsonify({"erro": "Endpoint não implementado."}), 501
 
 

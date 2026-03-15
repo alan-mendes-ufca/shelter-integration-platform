@@ -17,6 +17,8 @@ Quando você criar um novo controller, lembre-se de:
 
 from flask import Flask
 
+from infra.handlers import register_error_handlers
+
 # Controllers legados (exemplo)
 from .controllers.blueprint_example import blueprint_example
 
@@ -29,7 +31,7 @@ from .controllers.abrigos import abrigos_bp, vagas_bp
 from .controllers.encaminhamentos import encaminhamentos_bp
 from .docs.swagger import init_swagger
 
-API_PREFIX = "/api/v1"  # Prefixo comum para todas as rotas da API
+API_PREFIX = "/api/v1/"  # Prefixo comum para todas as rotas da API
 
 
 def create_app():
@@ -44,6 +46,8 @@ def create_app():
         Flask: Instância configurada da aplicação.
     """
     app = Flask(__name__)
+
+    register_error_handlers(app)
 
     # Blueprint de exemplo (pode remover quando o sistema estiver completo)
     app.register_blueprint(blueprint_example)
