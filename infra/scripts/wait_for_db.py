@@ -32,5 +32,5 @@ def check_mysql():
     print("\n 🟢 MySQL está pronto e aceitando conexões.")
 
 
-print("🔴 Aguardando o Postgres aceitar conexões...")
+print("🔴 Aguardando o MySQL aceitar conexões...")
 check_mysql()

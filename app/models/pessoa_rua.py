@@ -1,7 +1,7 @@
 from infra.database import Database
 
 
-class PessoaRuaModel:
+class PessoaRuaModel(Database):
     """
     Model da tabela `pessoa_rua`.
 
@@ -18,54 +18,46 @@ class PessoaRuaModel:
     - nivel_risco
     """
 
-    @staticmethod
-    def criar(dados: dict) -> dict | None:
-        query_insert = {
-            "text": """
+    @classmethod
+    def criar(cls, dados: dict) -> dict | None:
+        query_insert = """
             INSERT INTO pessoa_rua(apelido, descricao_fisica, nome_civil, cpf_opcional)
             VALUES (%s, %s, %s, %s)
-        """,
-            "values": (
-                dados["apelido"],
-                dados.get("descricao_fisica"),
-                dados.get("nome_civil"),
-                dados.get("cpf_opcional"),
-            ),
-        }
-        Database.query(query_insert)
+        """
+        params_insert = (
+            dados["apelido"],
+            dados.get("descricao_fisica"),
+            dados.get("nome_civil"),
+            dados.get("cpf_opcional"),
+        )
+        cls.query(query_insert, params_insert)
 
         if dados.get("cpf_opcional"):
-            query_select = {
-                "text": "SELECT * FROM pessoa_rua WHERE cpf_opcional = %s LIMIT 1",
-                "values": (dados["cpf_opcional"],),
-            }
+            query_select = "SELECT * FROM pessoa_rua WHERE cpf_opcional = %s LIMIT 1"
+            params_select = (dados["cpf_opcional"],)
 
         else:
-            query_select = {
-                "text": """
+            query_select = """
                 SELECT * FROM pessoa_rua
                 WHERE apelido = %s
                 ORDER BY id_pessoa_rua DESC
                 LIMIT 1
-            """,
-                "values": (dados["apelido"],),
-            }
+            """
+            params_select = (dados["apelido"],)
 
-        rows = Database.query(query_select)
+        rows = cls.query(query_select, params_select)
 
         if rows:
             return rows[0]
         else:
             return None
 
-    @staticmethod
-    def buscar_por_id(pessoa_id: int) -> dict | None:
-        query = {
-            "text": "SELECT * FROM pessoa_rua WHERE id_pessoa_rua = %s",
-            "values": (pessoa_id,),
-        }
+    @classmethod
+    def buscar_por_id(cls, pessoa_id: int) -> dict | None:
+        query = "SELECT * FROM pessoa_rua WHERE id_pessoa_rua = %s"
+        params = (pessoa_id,)
 
-        rows = Database.query(query)
+        rows = cls.query(query, params)
 
         if rows:
             return rows[0]
@@ -73,23 +65,21 @@ class PessoaRuaModel:
         else:
             return None
 
-    @staticmethod
-    def buscar_por_apelido(apelido: str) -> list[dict]:
+    @classmethod
+    def buscar_por_apelido(cls, apelido: str) -> list[dict]:
         termo = f"%{apelido}%"
-        query = {
-            "text": """
+        query = """
                 SELECT * FROM pessoa_rua
                 WHERE apelido LIKE %s OR descricao_fisica LIKE %s
                 ORDER BY id_pessoa_rua DESC
-            """,
-            "values": (termo, termo),
-        }
+            """
+        params = (termo, termo)
 
-        rows = Database.query(query)
+        rows = cls.query(query, params)
         return rows or []
 
-    @staticmethod
-    def atualizar(pessoa_id: int, dados: dict) -> dict | None:
+    @classmethod
+    def atualizar(cls, pessoa_id: int, dados: dict) -> dict | None:
         campos = []
         valores = []
         permitidos = ["apelido", "descricao_fisica", "nome_civil", "cpf_opcional"]
@@ -100,20 +90,18 @@ class PessoaRuaModel:
                 valores.append(dados[campo])
 
         if not campos:
-            return PessoaRuaModel.buscar_por_id(pessoa_id)
+            return cls.buscar_por_id(pessoa_id)
 
         valores.append(pessoa_id)
-        query_update = {
-            "text": f"UPDATE pessoa_rua SET {', '.join(campos)} WHERE id_pessoa_rua = %s",
-            "values": tuple(valores),
-        }
+        query_update = f"UPDATE pessoa_rua SET {', '.join(campos)} WHERE id_pessoa_rua = %s"
+        params_update = tuple(valores)
 
-        Database.query(query_update)
+        cls.query(query_update, params_update)
 
-        return PessoaRuaModel.buscar_por_id(pessoa_id)
+        return cls.buscar_por_id(pessoa_id)
 
-    @staticmethod
-    def atualizar_risco(pessoa_id: int, nivel_risco: str) -> dict | None:
+    @classmethod
+    def atualizar_risco(cls, pessoa_id: int, nivel_risco: str) -> dict | None:
         niveis_validos = {"baixo", "medio", "alto", "critico"}
 
         if nivel_risco not in niveis_validos:
@@ -122,21 +110,20 @@ class PessoaRuaModel:
                 f"Valores válidos: {sorted(niveis_validos)}"
             )
 
-        query_update = {
-            "text": """
+        query_update = """
                 UPDATE pessoa_rua
                 SET nivel_risco = %s
                 WHERE id_pessoa_rua = %s
-            """,
-            "values": (nivel_risco, pessoa_id),
-        }
+            """
+        params_update = (nivel_risco, pessoa_id)
 
-        Database.query(query_update)
+        cls.query(query_update, params_update)
 
-        return PessoaRuaModel.buscar_por_id(pessoa_id)
+        return cls.buscar_por_id(pessoa_id)
 
-    @staticmethod
+    @classmethod
     def listar_com_filtros(
+        cls,
         apelido: str | None = None,
         nome_civil: str | None = None,
         nivel_risco: str | None = None,
@@ -162,10 +149,5 @@ class PessoaRuaModel:
 
         query_base += " ORDER BY id_pessoa_rua DESC"
 
-        query = {
-            "text": query_base,
-            "values": tuple(valores),
-        }
-
-        rows = Database.query(query)
+        rows = cls.query(query_base, tuple(valores))
         return rows or []
