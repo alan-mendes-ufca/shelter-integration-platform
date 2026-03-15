@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS pessoa(
 -- que operam o sistema. Todo atendimento e encaminhamento precisa ter
 -- um profissional responsável para manter rastreabilidade.
 -- =============================================================================
+
 CREATE TABLE IF NOT EXISTS profissional (
     id_profissional INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     id_pessoa   INT     UNSIGNED    NOT NULL,
@@ -85,12 +86,12 @@ CREATE TABLE IF NOT EXISTS pessoa_rua(
 -- Só bloqueia acesso ao prontuário (US02, US03).
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS consentimento (
-    id              INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
-    pessoa_id       INT UNSIGNED    NOT NULL,
-    ativo           BOOLEAN         NOT NULL DEFAULT TRUE,   -- FALSE = revogado
-    registrado_em   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    revogado_em     DATETIME,                                -- Preenchido quando/se revogado (US03)
-    observacao      TEXT,                                    -- Contexto do consentimento ou revogação
+    id_consentimento INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
+    pessoa_id        INT UNSIGNED    NOT NULL,
+    ativo            BOOLEAN         NOT NULL DEFAULT TRUE,   -- FALSE = revogado
+    registrado_em    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    revogado_em      DATETIME,                                -- Preenchido quando/se revogado (US03)
+    observacao       TEXT,                                    -- Contexto do consentimento ou revogação
 
     CONSTRAINT fk_consentimento_pessoa
         FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id_pessoa_rua)
@@ -105,20 +106,20 @@ CREATE TABLE IF NOT EXISTS consentimento (
 -- A lógica de bloqueio é feita na camada de aplicação (Python), não aqui.
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS prontuario (
-    id                  INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
-    pessoa_id           INT UNSIGNED    NOT NULL UNIQUE,     -- 1 prontuário por pessoa
-    consentimento_id    INT UNSIGNED    NOT NULL,
-    diagnostico_social  TEXT,                                -- Síntese feita pelo assistente social
-    observacoes         TEXT,
-    criado_em           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    atualizado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    id_prontuario        INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
+    pessoa_id            INT UNSIGNED    NOT NULL UNIQUE,     -- 1 prontuário por pessoa
+    consentimento_id     INT UNSIGNED    NOT NULL,
+    diagnostico_social   TEXT,                                -- Síntese feita pelo assistente social
+    observacoes          TEXT,
+    criado_em            DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_prontuario_pessoa
         FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id_pessoa_rua)
         ON DELETE RESTRICT,
 
     CONSTRAINT fk_prontuario_consentimento
-        FOREIGN KEY (consentimento_id) REFERENCES consentimento(id)
+        FOREIGN KEY (consentimento_id) REFERENCES consentimento(id_consentimento)
         ON DELETE RESTRICT
 );
 
@@ -130,7 +131,7 @@ CREATE TABLE IF NOT EXISTS prontuario (
 -- O atendimento_id é vínculo obrigatório para qualquer encaminhamento (US04).
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS atendimento (
-    id                  INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
+    id_atendimento      INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     pessoa_id           INT UNSIGNED    NOT NULL,
     profissional_id     INT UNSIGNED    NOT NULL,
     tipo                ENUM('escuta','alimentacao','banho','saude','juridico','outro') NOT NULL,
@@ -138,15 +139,15 @@ CREATE TABLE IF NOT EXISTS atendimento (
     observacoes         TEXT,
     realizado_em        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     criado_em           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    atualizado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    atualizado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 
-    CONSTRAINT fk_atendimento_pessoa
-        FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id_pessoa_rua)
-        ON DELETE RESTRICT,
+    -- CONSTRAINT fk_atendimento_pessoa
+    --     FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id_pessoa_rua)
+    --     ON DELETE RESTRICT,
 
-    CONSTRAINT fk_atendimento_profissional
-        FOREIGN KEY (profissional_id) REFERENCES profissional(id_profissional)
-        ON DELETE RESTRICT
+    -- CONSTRAINT fk_atendimento_profissional
+    --     FOREIGN KEY (profissional_id) REFERENCES profissional(id_profissional)
+    --     ON DELETE RESTRICT
 );
 
 -- =============================================================================
@@ -156,7 +157,7 @@ CREATE TABLE IF NOT EXISTS atendimento (
 -- nos endpoints POST /vagas/entrada e PUT /vagas/:id/saida (US07, US08, US09).
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS abrigo (
-    id                  INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
+    id_abrigo           INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     nome                VARCHAR(150)    NOT NULL,
     endereco            VARCHAR(255)    NOT NULL,
     capacidade_total    INT UNSIGNED    NOT NULL,
@@ -177,7 +178,7 @@ CREATE TABLE IF NOT EXISTS abrigo (
 -- Não requer prontuário, mas requer pessoa cadastrada (US08, US09).
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS vaga (
-    id              INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
+    id_vaga         INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     pessoa_id       INT UNSIGNED    NOT NULL,
     abrigo_id       INT UNSIGNED    NOT NULL,
     status          ENUM('ocupada','liberada') NOT NULL DEFAULT 'ocupada',
@@ -189,7 +190,7 @@ CREATE TABLE IF NOT EXISTS vaga (
         ON DELETE RESTRICT,
 
     CONSTRAINT fk_vaga_abrigo
-        FOREIGN KEY (abrigo_id) REFERENCES abrigo(id)
+        FOREIGN KEY (abrigo_id) REFERENCES abrigo(id_abrigo)
         ON DELETE RESTRICT
 );
 
@@ -202,7 +203,7 @@ CREATE TABLE IF NOT EXISTS vaga (
 -- Sempre exige um atendimento registrado (US10).
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS encaminhamento (
-    id                  INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
+    id_encaminhamento   INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     atendimento_id      INT UNSIGNED    NOT NULL,            -- OBRIGATÓRIO em qualquer tipo
     prontuario_id       INT UNSIGNED,                        -- NULL = encaminhamento de emergência
     destino             VARCHAR(200)    NOT NULL,            -- Ex: "CRAS Vila Nova", "UBS Centro"
@@ -214,11 +215,11 @@ CREATE TABLE IF NOT EXISTS encaminhamento (
     atualizado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_encaminhamento_atendimento
-        FOREIGN KEY (atendimento_id) REFERENCES atendimento(id)
+        FOREIGN KEY (atendimento_id) REFERENCES atendimento(id_atendimento)
         ON DELETE RESTRICT,
 
     CONSTRAINT fk_encaminhamento_prontuario
-        FOREIGN KEY (prontuario_id) REFERENCES prontuario(id)
+        FOREIGN KEY (prontuario_id) REFERENCES prontuario(id_prontuario)
         ON DELETE RESTRICT                                   -- NULL é permitido (ON DELETE RESTRICT só age se não for NULL)
 );
 

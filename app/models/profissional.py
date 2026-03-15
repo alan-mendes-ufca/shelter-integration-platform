@@ -15,7 +15,7 @@ mas já estamos estruturando o sistema para suportá-la.
 from infra.database import Database  # noqa: F401 — usado nos TODOs abaixo
 
 
-class ProfissionalModel:
+class ProfissionalModel(Database):
     """
     Gerencia o cadastro de profissionais que operam o sistema.
 
@@ -23,8 +23,8 @@ class ProfissionalModel:
     psicólogos, coordenadores, etc.
     """
 
-    @staticmethod
-    def criar(dados: dict) -> dict | None:
+    @classmethod
+    def criar(cls, dados: dict) -> dict | None:
         """
         Cadastra um novo profissional no sistema.
 
@@ -47,8 +47,8 @@ class ProfissionalModel:
             "ProfissionalModel.criar() ainda não foi implementado."
         )
 
-    @staticmethod
-    def buscar_por_id(profissional_id: int) -> dict | None:
+    @classmethod
+    def buscar_por_id(cls, profissional_id: int) -> dict | None:
         """
         Retorna os dados de um profissional pelo ID.
 

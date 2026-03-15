@@ -23,7 +23,7 @@ chamar qualquer método desse model. O model assume que a permissão já foi che
 from infra.database import Database  # noqa: F401 — usado nos TODOs abaixo
 
 
-class ProntuarioModel:
+class ProntuarioModel(Database):
     """
     Gerencia o prontuário social integrado das pessoas atendidas.
 
@@ -31,8 +31,10 @@ class ProntuarioModel:
     atendimentos, encaminhamentos e status em uma única consulta.
     """
 
-    @staticmethod
-    def criar(pessoa_id: int, consentimento_id: int, dados: dict = None) -> dict | None:
+    @classmethod
+    def criar(
+        cls, pessoa_id: int, consentimento_id: int, dados: dict = None
+    ) -> dict | None:
         """
         Cria o prontuário social da pessoa.
 
@@ -56,8 +58,8 @@ class ProntuarioModel:
         # TODO: Implementar
         raise NotImplementedError("ProntuarioModel.criar() ainda não foi implementado.")
 
-    @staticmethod
-    def buscar_completo_por_pessoa(pessoa_id: int) -> dict | None:
+    @classmethod
+    def buscar_completo_por_pessoa(cls, pessoa_id: int) -> dict | None:
         """
         Retorna o prontuário integrado completo da pessoa (US05).
 
@@ -101,8 +103,8 @@ class ProntuarioModel:
             "ProntuarioModel.buscar_completo_por_pessoa() ainda não foi implementado."
         )
 
-    @staticmethod
-    def atualizar(prontuario_id: int, dados: dict) -> dict | None:
+    @classmethod
+    def atualizar(cls, prontuario_id: int, dados: dict) -> dict | None:
         """
         Atualiza informações do prontuário (diagnósticos, observações sociais).
 

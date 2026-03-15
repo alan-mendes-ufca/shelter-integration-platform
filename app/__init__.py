@@ -17,6 +17,8 @@ Quando você criar um novo controller, lembre-se de:
 
 from flask import Flask
 
+from infra.handlers import register_error_handlers
+
 # Controllers legados (exemplo)
 from .controllers.blueprint_example import blueprint_example
 
@@ -28,6 +30,8 @@ from .controllers.prontuarios import profissionais_bp, prontuarios_bp
 from .controllers.abrigos import abrigos_bp, vagas_bp
 from .controllers.encaminhamentos import encaminhamentos_bp
 from .docs.swagger import init_swagger
+
+API_PREFIX = "/api/v1/"  # Prefixo comum para todas as rotas da API
 
 
 def create_app():
@@ -43,18 +47,36 @@ def create_app():
     """
     app = Flask(__name__)
 
+    register_error_handlers(app)
+
     # Blueprint de exemplo (pode remover quando o sistema estiver completo)
     app.register_blueprint(blueprint_example)
 
     # ── Sistema de Atendimento ─────────────────────────────────────────────────
-    app.register_blueprint(pessoas_bp)  # GET/POST /pessoas
-    app.register_blueprint(consentimentos_bp)  # GET/POST /consentimentos
-    app.register_blueprint(atendimentos_bp)  # GET/POST /atendimentos
-    app.register_blueprint(profissionais_bp)  # GET/POST /profissionais
-    app.register_blueprint(prontuarios_bp)  # GET/POST /prontuarios
-    app.register_blueprint(abrigos_bp)  # GET/POST /abrigos
-    app.register_blueprint(vagas_bp)  # POST /vagas/entrada, PUT /vagas/:id/saida
-    app.register_blueprint(encaminhamentos_bp)  # GET/POST /encaminhamentos
+    app.register_blueprint(
+        pessoas_bp, url_prefix=f"{API_PREFIX}/pessoas"
+    )  # GET/POST /pessoas
+    app.register_blueprint(
+        consentimentos_bp, url_prefix=f"{API_PREFIX}/consentimentos"
+    )  # GET/POST /consentimentos
+    app.register_blueprint(
+        atendimentos_bp, url_prefix=f"{API_PREFIX}/atendimentos"
+    )  # GET/POST /atendimentos
+    app.register_blueprint(
+        profissionais_bp, url_prefix=f"{API_PREFIX}/profissionais"
+    )  # GET/POST /profissionais
+    app.register_blueprint(
+        prontuarios_bp, url_prefix=f"{API_PREFIX}/prontuarios"
+    )  # GET/POST /prontuarios
+    app.register_blueprint(
+        abrigos_bp, url_prefix=f"{API_PREFIX}/abrigos"
+    )  # GET/POST /abrigos
+    app.register_blueprint(
+        vagas_bp, url_prefix=f"{API_PREFIX}/vagas"
+    )  # POST /vagas/entrada, PUT /vagas/:id/saida
+    app.register_blueprint(
+        encaminhamentos_bp, url_prefix=f"{API_PREFIX}/encaminhamentos"
+    )  # GET/POST /encaminhamentos
 
     init_swagger(app)
 

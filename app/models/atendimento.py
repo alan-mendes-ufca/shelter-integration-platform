@@ -16,7 +16,7 @@ Guarda bem essa frase: "Sem atendimento, não há encaminhamento."
 from infra.database import Database  # noqa: F401 — usado nos TODOs abaixo
 
 
-class AtendimentoModel:
+class AtendimentoModel(Database):
     """
     Gerencia o registro de atendimentos diários (escuta, banho, alimentação, etc.).
 
@@ -25,12 +25,11 @@ class AtendimentoModel:
     Aqui, a regra é simples: se a pessoa existe, o atendimento pode ser criado.
     """
 
-    @staticmethod
-    def criar(dados: dict) -> dict | None:
+    @classmethod
+    def register(cls, data: dict) -> dict | None:
         """
         Registra um novo atendimento no sistema (US04).
-
-        Sempre possível, independente de consentimento ou prontuário.
+        - Sempre possível, independente de consentimento ou prontuário.
 
         Args:
             dados (dict): Dados do atendimento.
@@ -39,19 +38,32 @@ class AtendimentoModel:
 
         Returns:
             dict | None: Atendimento recém-criado.
-
-        TODO (estagiário): Implemente o INSERT em `atendimento`.
-                           O campo `tipo` deve ser um dos valores do ENUM no banco:
-                           'escuta', 'alimentacao', 'banho', 'saude', 'juridico', 'outro'.
-                           Valide isso no controller antes de chamar esse método.
         """
         # TODO: Implementar
-        raise NotImplementedError(
-            "AtendimentoModel.criar() ainda não foi implementado."
+
+        query = """
+            INSERT INTO atendimento 
+                (pessoa_id, profissional_id, tipo, unidade, observacoes, realizado_em)
+            VALUES 
+                (%s, %s, %s, %s, %s, %s);
+        """
+        params = (
+            data["pessoa_id"],
+            data["profissional_id"],
+            data["tipo"],
+            data["unidade"],
+            data.get("observacoes", "Sem observações"),
+            data.get("realizado_em", ""),
         )
 
-    @staticmethod
-    def listar_por_pessoa(pessoa_id: int) -> list[dict]:
+        lastrowid = cls.query(query, params)
+        result = cls.query(
+            "SELECT * FROM atendimento WHERE id_atendimento = %s;", (lastrowid,)
+        )
+        return result[0] if result else None
+
+    @classmethod
+    def listar_por_pessoa(cls, pessoa_id: int) -> list[dict]:
         """
         Lista todos os atendimentos de uma pessoa em ordem cronológica (US05).
 
@@ -77,9 +89,9 @@ class AtendimentoModel:
             "AtendimentoModel.listar_por_pessoa() ainda não foi implementado."
         )
 
-    @staticmethod
+    @classmethod
     def listar_por_unidade_e_periodo(
-        unidade: str, data_inicio: str, data_fim: str
+        cls, unidade: str, data_inicio: str, data_fim: str
     ) -> list[dict]:
         """
         Retorna atendimentos filtrados por unidade e período de datas.
@@ -104,8 +116,8 @@ class AtendimentoModel:
             "AtendimentoModel.listar_por_unidade_e_periodo() ainda não foi implementado."
         )
 
-    @staticmethod
-    def atualizar(atendimento_id: int, dados: dict) -> dict | None:
+    @classmethod
+    def atualizar(cls, atendimento_id: int, dados: dict) -> dict | None:
         """
         Corrige dados de um atendimento registrado com erro.
 
@@ -128,8 +140,8 @@ class AtendimentoModel:
             "AtendimentoModel.atualizar() ainda não foi implementado."
         )
 
-    @staticmethod
-    def deletar(atendimento_id: int) -> bool:
+    @classmethod
+    def deletar(cls, atendimento_id: int) -> bool:
         """
         Remove um atendimento registrado indevidamente.
 

@@ -18,7 +18,7 @@ suportam ela (campo `ativo`, `revogado_em`) ficam aqui no model.
 from infra.database import Database  # noqa: F401 — usado nos TODOs abaixo
 
 
-class ConsentimentoModel:
+class ConsentimentoModel(Database):
     """
     Gerencia o ciclo de vida do consentimento LGPD das pessoas atendidas.
 
@@ -28,8 +28,8 @@ class ConsentimentoModel:
         3. PUT  /consentimentos/:id/revogar → revogar() → ativo=False, revogado_em=NOW()
     """
 
-    @staticmethod
-    def criar(pessoa_id: int, observacao: str = None) -> dict | None:
+    @classmethod
+    def criar(cls, pessoa_id: int, observacao: str = None) -> dict | None:
         """
         Registra o consentimento formal de uma pessoa para tratamento de dados.
 
@@ -53,8 +53,8 @@ class ConsentimentoModel:
             "ConsentimentoModel.criar() ainda não foi implementado."
         )
 
-    @staticmethod
-    def buscar_ativo_por_pessoa(pessoa_id: int) -> dict | None:
+    @classmethod
+    def buscar_ativo_por_pessoa(cls, pessoa_id: int) -> dict | None:
         """
         Verifica se existe consentimento ATIVO para a pessoa informada.
 
@@ -75,8 +75,8 @@ class ConsentimentoModel:
             "ConsentimentoModel.buscar_ativo_por_pessoa() ainda não foi implementado."
         )
 
-    @staticmethod
-    def revogar(consentimento_id: int, observacao: str = None) -> dict | None:
+    @classmethod
+    def revogar(cls, consentimento_id: int, observacao: str = None) -> dict | None:
         """
         Registra a revogação do consentimento (US03).
 
@@ -103,8 +103,8 @@ class ConsentimentoModel:
             "ConsentimentoModel.revogar() ainda não foi implementado."
         )
 
-    @staticmethod
-    def historico_por_pessoa(pessoa_id: int) -> list[dict]:
+    @classmethod
+    def historico_por_pessoa(cls, pessoa_id: int) -> list[dict]:
         """
         Retorna o histórico COMPLETO de consentimentos e revogações de uma pessoa.
 

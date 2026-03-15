@@ -1,36 +1,31 @@
-import subprocess
 import time
 import os
+import mysql.connector
 from dotenv import load_dotenv
 
 load_dotenv(".env.development")
 
 
 def check_mysql():
+    host = os.getenv("MYSQL_HOST") or "127.0.0.1"
+    if host == "localhost":
+        host = "127.0.0.1"
 
-    result = subprocess.run(
-        [
-            "docker",
-            "exec",
-            "mysql-dev",
-            "mysqladmin",
-            "ping",
-            f"--host={os.getenv('MYSQL_HOST')}",
-            f"--user={os.getenv('MYSQL_ROOT_USER')}",
-            f"--password={os.getenv('MYSQL_ROOT_PASSWORD')}",
-            "--silent",
-        ],
-        capture_output=True,
-        text=True,
-    )
-
-    if "mysqld is alive" not in (result.stdout or ""):
-        time.sleep(0.5)
-        check_mysql()
-        return
-
-    print("\n 🟢 MySQL está pronto e aceitando conexões.")
+    while True:
+        try:
+            client = mysql.connector.connect(
+                host=host,
+                user=os.getenv("MYSQL_USER"),
+                password=os.getenv("MYSQL_PASSWORD"),
+                database=os.getenv("MYSQL_DATABASE"),
+                connection_timeout=5,
+            )
+            client.close()
+            print("\n 🟢 MySQL está pronto e aceitando conexões.")
+            return
+        except mysql.connector.Error:
+            time.sleep(1)
 
 
-print("🔴 Aguardando o Postgres aceitar conexões...")
+print("🔴 Aguardando o MySQL aceitar conexões...")
 check_mysql()

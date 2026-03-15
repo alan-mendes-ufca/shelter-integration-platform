@@ -26,7 +26,7 @@ test:
 	make servicesUp && make servicesWaitDatabase && make servicesLoadDatabase && uv run honcho start -f Procfile.test -q flask
 
 testWatch:
-	uv run pytest-watcher .
+	uv run pytest-watcher . -vv
 
 lint:
 	uv run ruff check . --fix

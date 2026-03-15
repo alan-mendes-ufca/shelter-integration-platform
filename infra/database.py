@@ -43,38 +43,28 @@ class Database:
             client.close()
 
     @classmethod
-    def query(cls, query=None):
-        """Executes a database query using the provided query object and an optional returning query."""
-
+    def query(cls, query, params=None):
         if query is None:
-            print("No query object provided.")
-            return None
+            raise ValueError("No query object provided.")
 
         client = None
         cursor = None
 
         try:
             client = cls.get_new_client()
+            cursor = client.cursor(dictionary=True, buffered=True)
+            cursor.execute(query, params)
+            client.commit()
 
-            if isinstance(query, dict):
-                cursor = client.cursor(dictionary=True)
-                cursor.execute(query["text"], query["values"])
-            elif isinstance(query, str):
-                cursor = client.cursor(dictionary=True)
-                cursor.execute(query)
-            else:
-                raise ValueError(
-                    "Query must be a string or a dictionary with 'text' and 'values' keys."
-                )
-
-            client.commit()  # Ensure that changes are saved to the database
+            if cursor.lastrowid:
+                return cursor.lastrowid
 
             return cursor.fetchall()
 
         except mysql.connector.Error as err:
             if client:
-                client.rollback()  # Rollback any changes if an error occurs
-            raise Exception(f"Error connecting to database: {err}")
+                client.rollback()
+            raise Exception(f"Database error: {err}") from err
 
         finally:
             if cursor:

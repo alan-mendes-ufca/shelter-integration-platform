@@ -1,4 +1,5 @@
 ## Estrutura básica do projeto
+
 ```
 FlaskProject/
 │
@@ -46,3 +47,49 @@ A aplicação agora expõe documentação interativa via Swagger UI:
 
 A spec cobre os blueprints já registrados em `create_app()` e descreve o contrato esperado dos endpoints.
 Enquanto parte da API ainda retorna `501 Endpoint não implementado`, a documentação já serve como referência única para frontend, testes e evolução dos controllers.
+
+## Como executar o projeto
+
+### Pré-requisitos
+
+- Docker e Docker Compose instalados
+- Python 3.12+
+- uv instalado
+
+### 1. Configurar ambiente
+
+```bash
+make setup
+```
+
+Esse comando instala dependências e hooks de pre-commit.
+
+### 2. Subir API com banco
+
+```bash
+make run
+```
+
+O comando:
+
+- sobe o container MySQL
+- aguarda o banco aceitar conexões
+- carrega o schema SQL
+- inicia a API Flask em http://127.0.0.1:5000
+
+### 3. Executar testes
+
+```bash
+make test
+```
+
+Para modo watch:
+
+```bash
+make testWatch
+```
+
+Se quiser API e watch ao mesmo tempo, use dois terminais:
+
+1. Terminal 1: `make run`
+2. Terminal 2: `make testWatch`
