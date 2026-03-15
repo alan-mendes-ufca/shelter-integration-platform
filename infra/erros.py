@@ -1,7 +1,7 @@
 class InternalServerError(Exception):
     """Base class for application errors."""
 
-    def __init__(self, name, message, action, status_code):
+    def __init__(self, name=None, message=None, action=None, status_code=None):
         self.name = name or "InternalServerError"
         self.message = message or "A unexpected error occurred."
         self.action = action or "Try again later."
