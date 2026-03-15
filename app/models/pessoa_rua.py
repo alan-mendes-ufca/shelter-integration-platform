@@ -1,168 +1,171 @@
-"""
-Model: PessoaRua
-================
-
-Estagiário, o model é a camada que conversa diretamente com o banco de dados.
-Ele não sabe nada de HTTP, não sabe nada de Flask — só sabe de SQL.
-
-Toda a lógica de "como buscar", "como inserir", "como atualizar" fica aqui.
-O controller vai chamar os métodos desse model e devolver o resultado como JSON.
-
-Regra de ouro: NUNCA coloque lógica de banco de dados no controller.
-              NUNCA coloque lógica de HTTP no model.
-"""
-
-from infra.database import Database  # noqa: F401 — usado nos TODOs abaixo
+from infra.database import Database
 
 
 class PessoaRuaModel:
     """
-    Representa e persiste os dados de pessoas em situação de rua.
+    Model da tabela `pessoa_rua`.
 
-    Essa é a tabela central do sistema — todo o resto (consentimento,
-    atendimento, prontuário...) referencia o `pessoa_id` gerado aqui.
+    Responsável por acessar e manipular os dados de pessoas em situação de rua:
+    criar cadastro, buscar por ID, buscar por apelido, atualizar dados e atualizar
+    nível de risco.
 
-    O cadastro é SEMPRE possível, mesmo sem documentos.
-    Campos obrigatórios mínimos: apelido + aparencia.
+    Campos principais da tabela:
+    - id_pessoa_rua
+    - apelido
+    - descricao_fisica
+    - nome_civil
+    - cpf_opcional
+    - nivel_risco
     """
 
     @staticmethod
     def criar(dados: dict) -> dict | None:
-        """
-        Insere uma nova pessoa no banco e retorna o registro criado.
+        query_insert = {
+            "text": """
+            INSERT INTO pessoa_rua(apelido, descricao_fisica, nome_civil, cpf_opcional)
+            VALUES (%s, %s, %s, %s)
+        """,
+            "values": (
+                dados["apelido"],
+                dados.get("descricao_fisica"),
+                dados.get("nome_civil"),
+                dados.get("cpf_opcional"),
+            ),
+        }
+        Database.query(query_insert)
 
-        Estagiário: usamos `%s` como placeholder para evitar SQL Injection.
-        NUNCA concatene strings diretamente numa query. Nunca.
+        if dados.get("cpf_opcional"):
+            query_select = {
+                "text": "SELECT * FROM pessoa_rua WHERE cpf_opcional = %s LIMIT 1",
+                "values": (dados["cpf_opcional"],),
+            }
 
-        Args:
-            dados (dict): Dicionário com os campos da pessoa.
-                          Campos obrigatórios: 'apelido', 'aparencia'
-                          Campos opcionais: 'nome_real', 'cpf', 'data_nascimento',
-                                           'genero', 'endereco_ref', 'nivel_risco'
+        else:
+            query_select = {
+                "text": """
+                SELECT * FROM pessoa_rua
+                WHERE apelido = %s
+                ORDER BY id_pessoa_rua DESC
+                LIMIT 1
+            """,
+                "values": (dados["apelido"],),
+            }
 
-        Returns:
-            dict | None: Registro da pessoa recém-criada ou None se falhar.
+        rows = Database.query(query_select)
 
-        TODO (estagiário): Implementar a query de INSERT e em seguida
-                           um SELECT pelo lastrowid para retornar o registro completo.
-                           Dica: cursor.lastrowid retorna o ID gerado pelo AUTO_INCREMENT.
-        """
-        # TODO: Implementar
-        # Exemplo de estrutura esperada:
-        #
-        # query_insert = {
-        #     'text': """
-        #         INSERT INTO pessoa_rua (apelido, nome_real, cpf, data_nascimento,
-        #                                genero, aparencia, endereco_ref, nivel_risco)
-        #         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        #     """,
-        #     'values': (
-        #         dados['apelido'],
-        #         dados.get('nome_real'),
-        #         dados.get('cpf'),
-        #         dados.get('data_nascimento'),
-        #         dados.get('genero'),
-        #         dados['aparencia'],
-        #         dados.get('endereco_ref'),
-        #         dados.get('nivel_risco', 'baixo'),
-        #     )
-        # }
-        # Database.query(query_insert)
-        # ... buscar pelo ID gerado e retornar
-        raise NotImplementedError("PessoaRuaModel.criar() ainda não foi implementado.")
+        if rows:
+            return rows[0]
+        else:
+            return None
 
     @staticmethod
     def buscar_por_id(pessoa_id: int) -> dict | None:
-        """
-        Busca uma pessoa pelo ID primário.
+        query = {
+            "text": "SELECT * FROM pessoa_rua WHERE id_pessoa_rua = %s",
+            "values": (pessoa_id,),
+        }
 
-        Retorna None se não encontrar — o controller é responsável
-        por transformar isso em um HTTP 404.
+        rows = Database.query(query)
 
-        Args:
-            pessoa_id (int): ID da pessoa na tabela `pessoa_rua`.
+        if rows:
+            return rows[0]
 
-        Returns:
-            dict | None: Dados da pessoa ou None se não existir.
-
-        TODO (estagiário): Implementar SELECT * FROM pessoa_rua WHERE id = %s.
-                           fetchall() retorna uma lista; se vazia, retorne None.
-                           Se tiver resultado, retorne result[0].
-        """
-        # TODO: Implementar
-        raise NotImplementedError(
-            "PessoaRuaModel.buscar_por_id() ainda não foi implementado."
-        )
+        else:
+            return None
 
     @staticmethod
     def buscar_por_apelido(apelido: str) -> list[dict]:
-        """
-        Busca pessoas cujo apelido contenha o termo informado (LIKE).
+        termo = f"%{apelido}%"
+        query = {
+            "text": """
+                SELECT * FROM pessoa_rua
+                WHERE apelido LIKE %s OR descricao_fisica LIKE %s
+                ORDER BY id_pessoa_rua DESC
+            """,
+            "values": (termo, termo),
+        }
 
-        Usado para evitar cadastros duplicados quando a pessoa já foi
-        atendida anteriormente mas não tem documentos.
-
-        Args:
-            apelido (str): Termo de busca (parcial aceito).
-
-        Returns:
-            list[dict]: Lista de pessoas encontradas (pode ser vazia).
-
-        TODO (estagiário): Use LIKE '%valor%' na query.
-                           Atenção: o placeholder deve ser montado ANTES de passar
-                           para o Database.query(), como: f'%{apelido}%'
-                           Não coloque % dentro do %s — isso confunde o conector.
-        """
-        # TODO: Implementar
-        raise NotImplementedError(
-            "PessoaRuaModel.buscar_por_apelido() ainda não foi implementado."
-        )
+        rows = Database.query(query)
+        return rows or []
 
     @staticmethod
     def atualizar(pessoa_id: int, dados: dict) -> dict | None:
-        """
-        Atualiza os dados gerais de uma pessoa.
+        campos = []
+        valores = []
+        permitidos = ["apelido", "descricao_fisica", "nome_civil", "cpf_opcional"]
 
-        Estagiário: atualizações parciais (PATCH) são mais elegantes, mas
-        para simplificar, aqui trabalhamos com PUT — o frontend manda tudo,
-        nós atualizamos tudo. Campos não enviados mantêm valor anterior via
-        lógica no controller (merge dos dados existentes + dados novos).
+        for campo in permitidos:
+            if campo in dados:
+                campos.append(f"{campo} = %s")
+                valores.append(dados[campo])
 
-        Args:
-            pessoa_id (int): ID da pessoa a ser atualizada.
-            dados (dict): Campos a atualizar.
+        if not campos:
+            return PessoaRuaModel.buscar_por_id(pessoa_id)
 
-        Returns:
-            dict | None: Registro atualizado ou None se não encontrado.
+        valores.append(pessoa_id)
+        query_update = {
+            "text": f"UPDATE pessoa_rua SET {', '.join(campos)} WHERE id_pessoa_rua = %s",
+            "values": tuple(valores),
+        }
 
-        TODO (estagiário): Implementar UPDATE + SELECT para retornar o estado atual.
-        """
-        # TODO: Implementar
-        raise NotImplementedError(
-            "PessoaRuaModel.atualizar() ainda não foi implementado."
-        )
+        Database.query(query_update)
+
+        return PessoaRuaModel.buscar_por_id(pessoa_id)
 
     @staticmethod
     def atualizar_risco(pessoa_id: int, nivel_risco: str) -> dict | None:
-        """
-        Atualiza especificamente o nível de risco/vulnerabilidade da pessoa.
+        niveis_validos = {"baixo", "medio", "alto", "critico"}
 
-        Separado do `atualizar()` porque é uma ação com semântica própria —
-        normalmente feita por profissional de saúde após avaliação (US06).
+        if nivel_risco not in niveis_validos:
+            raise ValueError(
+                f"nivel_risco inválido: '{nivel_risco}'."
+                f"Valores válidos: {sorted(niveis_validos)}"
+            )
 
-        Args:
-            pessoa_id (int): ID da pessoa.
-            nivel_risco (str): Um de: 'baixo', 'medio', 'alto', 'critico'.
+        query_update = {
+            "text": """
+                UPDATE pessoa_rua
+                SET nivel_risco = %s
+                WHERE id_pessoa_rua = %s
+            """,
+            "values": (nivel_risco, pessoa_id),
+        }
 
-        Returns:
-            dict | None: Registro atualizado ou None se não encontrado.
+        Database.query(query_update)
 
-        TODO (estagiário): Valide o valor de nivel_risco ANTES de mandar pro banco.
-                           Os valores válidos estão no ENUM do SQL. Se vier algo
-                           diferente, o MySQL vai rejeitar — melhor rejeitar antes
-                           com uma mensagem clara pro usuário.
-        """
-        # TODO: Implementar
-        raise NotImplementedError(
-            "PessoaRuaModel.atualizar_risco() ainda não foi implementado."
-        )
+        return PessoaRuaModel.buscar_por_id(pessoa_id)
+
+    @staticmethod
+    def listar_com_filtros(
+        apelido: str | None = None,
+        nome_civil: str | None = None,
+        nivel_risco: str | None = None,
+    ) -> list[dict]:
+        query_base = "SELECT * FROM pessoa_rua"
+        filtros = []
+        valores = []
+
+        if apelido:
+            filtros.append("apelido LIKE %s")
+            valores.append(f"%{apelido}%")
+
+        if nome_civil:
+            filtros.append("nome_civil LIKE %s")
+            valores.append(f"%{nome_civil}%")
+
+        if nivel_risco:
+            filtros.append("nivel_risco = %s")
+            valores.append(nivel_risco)
+
+        if filtros:
+            query_base += " WHERE " + " AND ".join(filtros)
+
+        query_base += " ORDER BY id_pessoa_rua DESC"
+
+        query = {
+            "text": query_base,
+            "values": tuple(valores),
+        }
+
+        rows = Database.query(query)
+        return rows or []
