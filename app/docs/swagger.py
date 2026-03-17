@@ -93,7 +93,7 @@ SWAGGER_TEMPLATE = {
             "description": "Endpoints simples para smoke tests e exemplos.",
         },
         {
-            "name": "Pessoas",
+            "name": "Pessoa em Situação de Rua",
             "description": "Cadastro provisório e gestão do nível de risco.",
         },
         {
@@ -141,18 +141,14 @@ SWAGGER_TEMPLATE = {
         "Pessoa": {
             "type": "object",
             "properties": {
-                "id": {"type": "integer", "example": 42},
+                "id_pessoa_rua": {"type": "integer", "example": 42},
                 "apelido": {"type": "string", "example": "João do Chapéu"},
-                "aparencia": {"type": "string", "example": "Homem, cerca de 50 anos"},
-                "nome_real": {"type": "string", "example": "João Silva"},
-                "cpf": {"type": "string", "example": "123.456.789-00"},
-                "data_nascimento": {
+                "descricao_fisica": {
                     "type": "string",
-                    "format": "date",
-                    "example": "1975-03-10",
+                    "example": "Homem, cerca de 50 anos",
                 },
-                "genero": {"type": "string", "example": "masculino"},
-                "endereco_ref": {"type": "string", "example": "Praça da Sé"},
+                "nome_civil": {"type": "string", "example": "João Silva"},
+                "cpf_opcional": {"type": "string", "example": "39053344705"},
                 "nivel_risco": {
                     "type": "string",
                     "enum": ["baixo", "medio", "alto", "critico"],
@@ -162,34 +158,24 @@ SWAGGER_TEMPLATE = {
         },
         "PessoaCreateInput": {
             "type": "object",
-            "required": ["apelido", "aparencia"],
+            "required": ["apelido", "descricao_fisica"],
             "properties": {
                 "apelido": {"type": "string", "example": "João do Chapéu"},
-                "aparencia": {
+                "descricao_fisica": {
                     "type": "string",
                     "example": "Homem, cerca de 50 anos, chapéu preto",
                 },
-                "nome_real": {"type": "string"},
-                "cpf": {"type": "string"},
-                "data_nascimento": {"type": "string", "format": "date"},
-                "genero": {"type": "string"},
-                "endereco_ref": {"type": "string"},
-                "nivel_risco": {
-                    "type": "string",
-                    "enum": ["baixo", "medio", "alto", "critico"],
-                },
+                "nome_civil": {"type": "string"},
+                "cpf_opcional": {"type": "string", "example": "39053344705"},
             },
         },
         "PessoaUpdateInput": {
             "type": "object",
             "properties": {
                 "apelido": {"type": "string"},
-                "aparencia": {"type": "string"},
-                "nome_real": {"type": "string"},
-                "cpf": {"type": "string"},
-                "data_nascimento": {"type": "string", "format": "date"},
-                "genero": {"type": "string"},
-                "endereco_ref": {"type": "string"},
+                "descricao_fisica": {"type": "string"},
+                "nome_civil": {"type": "string"},
+                "cpf_opcional": {"type": "string"},
             },
         },
         "PessoaRiscoInput": {
@@ -489,9 +475,13 @@ SWAGGER_TEMPLATE = {
         },
         "/pessoas": {
             "post": {
-                "tags": ["Pessoas"],
+                "tags": ["Pessoa em Situação de Rua"],
                 "summary": "Cria o cadastro provisório de uma pessoa.",
-                "description": "Ponto de entrada obrigatório da jornada da pessoa no sistema.",
+                "description": (
+                    "Ponto de entrada obrigatório da jornada da pessoa no sistema. "
+                    "Por padrão, o nível de risco é definido como 'medio'. "
+                    "Se quiser alterar, use o endpoint PUT /pessoas/{id_pessoa_rua}/risco."
+                ),
                 "parameters": [
                     _body_param(
                         "PessoaCreateInput", "Dados mínimos para o cadastro provisório."
@@ -503,9 +493,12 @@ SWAGGER_TEMPLATE = {
                 ),
             },
             "get": {
-                "tags": ["Pessoas"],
+                "tags": ["Pessoa em Situação de Rua"],
                 "summary": "Busca pessoas por apelido.",
-                "description": "Faz busca parcial para evitar cadastros duplicados.",
+                "description": (
+                    "Faz busca parcial para evitar cadastros duplicados. "
+                    "Use o parâmetro de query obrigatório `apelido`."
+                ),
                 "parameters": [
                     _query_param(
                         "apelido",
@@ -521,11 +514,13 @@ SWAGGER_TEMPLATE = {
                 ),
             },
         },
-        "/pessoas/{pessoa_id}": {
+        "/pessoas/{id_pessoa_rua}": {
             "get": {
-                "tags": ["Pessoas"],
+                "tags": ["Pessoa em Situação de Rua"],
                 "summary": "Retorna uma pessoa pelo ID.",
-                "parameters": [_path_param("pessoa_id", "ID da pessoa cadastrada.")],
+                "parameters": [
+                    _path_param("id_pessoa_rua", "ID da pessoa em situação de rua.")
+                ],
                 "responses": _default_responses(
                     success={
                         "200": _response("Pessoa encontrada.", "Pessoa"),
@@ -534,10 +529,17 @@ SWAGGER_TEMPLATE = {
                 ),
             },
             "put": {
-                "tags": ["Pessoas"],
+                "tags": ["Pessoa em Situação de Rua"],
                 "summary": "Atualiza dados de uma pessoa.",
+                "description": (
+                    "Atualiza parcialmente os campos da pessoa. "
+                    "Campos aceitos: apelido, descricao_fisica, nome_civil e cpf_opcional. "
+                    "Quando informado, `cpf_opcional` é validado antes da atualização."
+                ),
                 "parameters": [
-                    _path_param("pessoa_id", "ID da pessoa a atualizar."),
+                    _path_param(
+                        "id_pessoa_rua", "ID da pessoa em situação de rua a atualizar."
+                    ),
                     _body_param("PessoaUpdateInput", "Campos a serem atualizados."),
                 ],
                 "responses": _default_responses(
@@ -549,18 +551,61 @@ SWAGGER_TEMPLATE = {
                 ),
             },
         },
-        "/pessoas/{pessoa_id}/risco": {
+        "/pessoas/{id_pessoa_rua}/risco": {
             "put": {
-                "tags": ["Pessoas"],
+                "tags": ["Pessoa em Situação de Rua"],
                 "summary": "Atualiza o nível de risco da pessoa.",
                 "parameters": [
-                    _path_param("pessoa_id", "ID da pessoa a atualizar."),
+                    _path_param(
+                        "id_pessoa_rua", "ID da pessoa em situação de rua a atualizar."
+                    ),
                     _body_param("PessoaRiscoInput", "Novo nível de risco da pessoa."),
                 ],
                 "responses": _default_responses(
                     success={
                         "200": _response("Nível de risco atualizado.", "Pessoa"),
                         "404": _response("Pessoa não encontrada.", "ErrorResponse"),
+                    },
+                    with_bad_request=True,
+                ),
+            }
+        },
+        "/pessoas/filtros": {
+            "get": {
+                "tags": ["Pessoa em Situação de Rua"],
+                "summary": "Lista pessoas com filtros opcionais.",
+                "description": (
+                    "Permite filtrar por apelido, nome_civil, nivel_risco e "
+                    "cpf_opcional (com ou sem máscara)."
+                ),
+                "parameters": [
+                    _query_param(
+                        "apelido",
+                        "Filtro parcial por apelido.",
+                        required=False,
+                    ),
+                    _query_param(
+                        "nome_civil",
+                        "Filtro parcial por nome civil.",
+                        required=False,
+                    ),
+                    _query_param(
+                        "nivel_risco",
+                        "Filtro por nível de risco.",
+                        required=False,
+                        enum=["baixo", "medio", "alto", "critico"],
+                    ),
+                    _query_param(
+                        "cpf_opcional",
+                        "Filtro por CPF opcional (com ou sem máscara).",
+                        required=False,
+                    ),
+                ],
+                "responses": _default_responses(
+                    success={
+                        "200": _array_response(
+                            "Lista de pessoas filtrada com sucesso.", "Pessoa"
+                        )
                     },
                     with_bad_request=True,
                 ),

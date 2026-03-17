@@ -1,8 +1,9 @@
-from dotenv import load_dotenv
 import os
-import re
 import pathlib
+import re
+
 import mysql.connector
+from dotenv import load_dotenv
 
 load_dotenv(".env.development")
 
@@ -43,7 +44,9 @@ class Database:
             client.close()
 
     @classmethod
-    def query(cls, query, params=None):
+    def query(cls, query=None, params=None):
+        """Executes a database query using the provided query object and an optional returning query."""
+
         if query is None:
             raise ValueError("No query object provided.")
 
@@ -53,17 +56,34 @@ class Database:
         try:
             client = cls.get_new_client()
             cursor = client.cursor(dictionary=True, buffered=True)
-            cursor.execute(query, params)
-            client.commit()
 
-            if cursor.lastrowid:
+            if isinstance(query, dict):
+                sql_text = query["text"]
+                sql_values = query.get("values", ())
+                cursor.execute(sql_text, sql_values)
+            elif isinstance(query, str):
+                sql_text = query
+                cursor.execute(sql_text, params)
+            else:
+                raise ValueError(
+                    "Query must be a string or a dictionary with 'text' and 'values' keys."
+                )
+
+            command = sql_text.strip().split()[0].upper()
+
+            if command == "SELECT":
+                return cursor.fetchall()
+
+            client.commit()  # Ensure that changes are saved to the database
+
+            if command == "INSERT" and cursor.lastrowid:
                 return cursor.lastrowid
 
-            return cursor.fetchall()
+            return []
 
         except mysql.connector.Error as err:
             if client:
-                client.rollback()
+                client.rollback()  # Rollback any changes if an error occurs
             raise Exception(f"Database error: {err}") from err
 
         finally:
