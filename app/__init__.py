@@ -15,13 +15,13 @@ Quando você criar um novo controller, lembre-se de:
   2. Registrá-lo com app.register_blueprint().
 """
 
-from flask import Flask
+from flask import Flask, redirect
 
 # Controllers legados (exemplo)
 from .controllers.blueprint_example import blueprint_example
 
 # Controllers do sistema de atendimento
-from .controllers.pessoas import pessoas_bp
+from .controllers.pessoa_rua import pessoas_bp
 from .controllers.consentimentos import consentimentos_bp
 from .controllers.atendimentos import atendimentos_bp
 from .controllers.prontuarios import profissionais_bp, prontuarios_bp
@@ -57,5 +57,9 @@ def create_app():
     app.register_blueprint(encaminhamentos_bp)  # GET/POST /encaminhamentos
 
     init_swagger(app)
+
+    @app.route("/", methods=["GET"])
+    def index():
+        return redirect("/docs/")
 
     return app
