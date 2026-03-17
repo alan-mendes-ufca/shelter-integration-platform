@@ -190,6 +190,7 @@ class PessoaRuaModel(Database):
         apelido: str | None = None,
         nome_civil: str | None = None,
         nivel_risco: str | None = None,
+        cpf_opcional: str | None = None,
     ) -> list[dict]:
         query_base = "SELECT * FROM pessoa_rua"
         filtros = []
@@ -207,6 +208,10 @@ class PessoaRuaModel(Database):
             filtros.append("nivel_risco = %s")
             valores.append(nivel_risco)
 
+        if cpf_opcional:
+            cpf_limpo = re.sub(r"\D", "", cpf_opcional)
+            filtros.append("cpf_opcional = %s")
+            valores.append(cpf_limpo)
         if filtros:
             query_base += " WHERE " + " AND ".join(filtros)
 
