@@ -1,30 +1,40 @@
 """
-Controller: PessoaRua
-=====================
+Controller: Pessoa em Situação de Rua
 
-Estagiário, bem-vindo ao controller. Aqui vivem os endpoints HTTP.
+Este arquivo reúne os endpoints HTTP responsáveis pelo ciclo básico de gestão
+de pessoas em situação de rua no sistema.
 
-Responsabilidades do controller:
-1. Receber a requisição HTTP (método, rota, body, query params).
-2. Validar os dados de entrada (campos obrigatórios, formatos, etc.).
-3. Chamar o Model correspondente para executar a operação no banco.
-4. Retornar a resposta HTTP com o status code correto.
+Escopo do controller:
+- criar cadastro provisório;
+- consultar por ID;
+- buscar por apelido;
+- atualizar dados cadastrais;
+- atualizar nível de risco;
+- listar com filtros opcionais.
 
-O controller NÃO sabe como funciona o banco de dados. Isso é problema do Model.
-O Model NÃO sabe o que é HTTP. Isso é problema do Controller.
-Essa separação é o que chamamos de responsabilidade única — e é muito importante.
+Responsabilidade desta camada:
+- interpretar requisições HTTP (path, query e body);
+- validar entradas básicas de requisição;
+- chamar o `PessoaRuaModel` para acesso a dados;
+- retornar respostas HTTP padronizadas com status adequados.
 
-Tabela de status HTTP que você vai usar muito:
-  200 OK              → GET com resultado
-  201 Created         → POST com recurso criado com sucesso
-  204 No Content      → DELETE bem-sucedido (sem body na resposta)
-  400 Bad Request     → Dados inválidos enviados pelo cliente
-  404 Not Found       → Recurso não encontrado no banco
-  409 Conflict        → Conflito de estado (ex: duplicidade)
-  500 Internal Error  → Erro inesperado no servidor (nunca deveria chegar aqui)
+Regras gerais de retorno:
+- 200 para consultas/atualizações bem-sucedidas;
+- 201 para criação;
+- 400 para erro de entrada/validação;
+- 404 quando o recurso não existir;
+- 500 para falhas inesperadas.
+
+Observação:
+As regras de persistência e validações de domínio ligadas ao banco devem ficar
+no model. O controller atua como camada de orquestração HTTP.
 """
 
-from flask import Blueprint, request, jsonify  # noqa: F401
+
+from crypt import methods
+
+from flask import Blueprint, jsonify, request  # noqa: F401
+
 from app.models.pessoa_rua import PessoaRuaModel  # noqa: F401
 
 pessoas_bp = Blueprint("pessoas", __name__, url_prefix="/pessoas")
@@ -35,150 +45,138 @@ NIVEIS_RISCO_VALIDOS = {"baixo", "medio", "alto", "critico"}
 
 @pessoas_bp.route("", methods=["POST"])
 def criar_pessoa():
-    """
-    POST /pessoas
+    dados = request.get_json(silent=True)
+    if not dados:
+        return jsonify({"erro": "Body JSON inválido ou ausente."}), 400
 
-    Cria o cadastro provisório de uma pessoa em situação de rua.
-    É o PONTO DE ENTRADA obrigatório de toda a jornada no sistema (US01).
+    try:
+        pessoa = PessoaRuaModel.criar(dados)
 
-    Aceita cadastro sem documentos — apenas apelido + aparência física.
-    Isso garante que nenhum atendimento seja bloqueado por burocracia.
+    except ValueError as err:
+        return jsonify({"erro": str(err)}), 400
 
-    Body JSON esperado:
-        {
-            "apelido": "João do Chapéu",          (obrigatório)
-            "aparencia": "Homem, ~50 anos, ...",  (obrigatório)
-            "nome_real": "João Silva",            (opcional)
-            "cpf": "123.456.789-00",              (opcional)
-            "data_nascimento": "1975-03-10",      (opcional, formato YYYY-MM-DD)
-            "genero": "masculino",                (opcional)
-            "endereco_ref": "Praça da Sé",        (opcional)
-            "nivel_risco": "baixo"                (opcional, default: "baixo")
-        }
+    except Exception as err:
+        return jsonify({"erro": str(err)}), 500
 
-    Retorna:
-        201 Created  + dados da pessoa criada
-        400 Bad Request se 'apelido' ou 'aparencia' não forem enviados
+    if not pessoa:
+        return jsonify({"erro": "Erro ao criar_pessoa"}), 500
 
-    TODO (estagiário): Implemente a validação dos campos obrigatórios e
-                       chame PessoaRuaModel.criar(dados).
-                       Lembre: request.get_json() retorna None se o Content-Type
-                       não for application/json. Trate isso!
-    """
-    # TODO: Implementar
-    # Estrutura esperada:
-    #
-    # dados = request.get_json()
-    # if not dados:
-    #     return jsonify({'erro': 'Body JSON inválido ou ausente.'}), 400
-    #
-    # if not dados.get('apelido') or not dados.get('aparencia'):
-    #     return jsonify({'erro': "'apelido' e 'aparencia' são obrigatórios."}), 400
-    #
-    # pessoa = PessoaRuaModel.criar(dados)
-    # return jsonify(pessoa), 201
-    return jsonify({"erro": "Endpoint não implementado."}), 501
+    return jsonify(pessoa), 201
 
 
 @pessoas_bp.route("/<int:pessoa_id>", methods=["GET"])
-def buscar_pessoa(pessoa_id: int):
-    """
-    GET /pessoas/:id
+def buscar_por_id(pessoa_id: int):
+    try:
+        pessoa = PessoaRuaModel.buscar_por_id(pessoa_id)
 
-    Retorna os dados completos de uma pessoa pelo ID.
-    Consultado por profissionais antes de iniciar qualquer atendimento,
-    consentimento ou encaminhamento.
+    except Exception:
+        return jsonify({"erro": "Falha ao criar pessoa."}), 500
 
-    Parâmetro de rota:
-        pessoa_id (int): ID da pessoa na tabela pessoa_rua.
+    if not pessoa:
+        return jsonify({"erro": "Pessoa não encontrada."}), 404
 
-    Retorna:
-        200 OK       + dados da pessoa
-        404 Not Found se o ID não existir no banco
-
-    TODO (estagiário): Chame PessoaRuaModel.buscar_por_id(pessoa_id).
-                       Se retornar None, devolva 404 com mensagem amigável.
-    """
-    # TODO: Implementar
-    return jsonify({"erro": "Endpoint não implementado."}), 501
+    return jsonify(pessoa), 200
 
 
 @pessoas_bp.route("", methods=["GET"])
 def buscar_por_apelido():
-    """
-    GET /pessoas?apelido=X
+    apelido = request.args.get("apelido", "").strip()
+    if not apelido:
+        return jsonify({"erro": "Parâmetro 'apelido' é obrigatório"}), 400
 
-    Busca pessoas por apelido ou características físicas.
-    Essencial para EVITAR cadastros duplicados quando a pessoa já foi
-    atendida anteriormente.
+    try:
+        pessoa = PessoaRuaModel.buscar_por_apelido(apelido)
+    except Exception:
+        return jsonify({"erro": "Erro interno ao buscar pessoa de rua."}), 500
 
-    Query param:
-        apelido (str): Termo de busca (busca parcial com LIKE).
-
-    Retorna:
-        200 OK + lista de pessoas (pode ser lista vazia [])
-        400 Bad Request se o parâmetro 'apelido' não for enviado
-
-    TODO (estagiário): Use request.args.get('apelido') para pegar o query param.
-                       Se vier vazio ou None, retorne 400.
-                       Sempre retorne uma lista, mesmo se vazia — nunca retorne None.
-    """
-    # TODO: Implementar
-    return jsonify({"erro": "Endpoint não implementado."}), 501
+    return jsonify(pessoa), 200
 
 
 @pessoas_bp.route("/<int:pessoa_id>", methods=["PUT"])
 def atualizar_pessoa(pessoa_id: int):
-    """
-    PUT /pessoas/:id
+    dados = request.get_json(silent=True)
+    if not dados:
+        return jsonify({"erro": "JSON inválido ou ausente."}), 400
 
-    Atualiza dados da pessoa conforme novas informações são coletadas.
-    Ex: descoberta de documentos reais, atualização de endereço de referência.
+    try:
+        pessoa_atual = PessoaRuaModel.buscar_por_id(pessoa_id)
+        if not pessoa_atual:
+            return jsonify({"erro": "Pessoa não encontrada"}), 404
 
-    Parâmetro de rota:
-        pessoa_id (int): ID da pessoa a atualizar.
+        pessoa = PessoaRuaModel.atualizar(pessoa_id, dados)
+    except ValueError as err:
+        return jsonify({"erro": str(err)}), 400
 
-    Body JSON: qualquer subconjunto dos campos da pessoa (exceto 'nivel_risco',
-               que tem endpoint próprio).
+    except Exception:
+        return jsonify({"erro": "Erro interno ao atualizar pessoa."}), 500
 
-    Retorna:
-        200 OK       + dados atualizados
-        400 Bad Request se o body estiver vazio ou inválido
-        404 Not Found se o ID não existir
+    if not pessoa:
+        return jsonify({"erro": "Pessoa não encontrada."}), 404
 
-    TODO (estagiário): Antes de atualizar, busque a pessoa atual com buscar_por_id().
-                       Faça merge dos dados existentes com os dados recebidos.
-                       Isso garante que campos não enviados não sejam zerados.
-                       Depois chame PessoaRuaModel.atualizar(pessoa_id, dados_merged).
-    """
-    # TODO: Implementar
-    return jsonify({"erro": "Endpoint não implementado."}), 501
+    return jsonify(pessoa), 200
 
 
 @pessoas_bp.route("/<int:pessoa_id>/risco", methods=["PUT"])
 def atualizar_risco(pessoa_id: int):
-    """
-    PUT /pessoas/:id/risco
+    dados = request.get_json(silent=True)
+    if not dados:
+        return jsonify({"erro": "Body JSON inválido ou ausente."}), 400
 
-    Atualiza especificamente o status de vulnerabilidade da pessoa.
-    Alimenta decisões de prioridade de intervenção (US06).
+    nivel_risco = dados.get("nivel_risco")
+    if not nivel_risco:
+        return jsonify({"erro": "Campo 'nivel_risco' é obrigatorio."}), 400
 
-    Parâmetro de rota:
-        pessoa_id (int): ID da pessoa.
+    if nivel_risco not in NIVEIS_RISCO_VALIDOS:
+        return (
+            jsonify(
+                {
+                    "erro": "nivel_risco inválido. ",
+                    "valores_validos": sorted(NIVEIS_RISCO_VALIDOS),
+                }
+            ),
+            400,
+        )
 
-    Body JSON esperado:
-        {
-            "nivel_risco": "alto"   (obrigatório: "baixo", "medio", "alto" ou "critico")
-        }
+    try:
+        pessoa = PessoaRuaModel.atualizar_risco(pessoa_id, nivel_risco)
+    except ValueError as err:
+        return jsonify({"erro": str(err)}), 400
+    except Exception:
+        return jsonify({"erro": "Erro interno ao atualizar risco."}), 500
 
-    Retorna:
-        200 OK       + dados atualizados
-        400 Bad Request se nivel_risco for inválido ou ausente
-        404 Not Found se o ID não existir
+    if not pessoa:
+        return jsonify({"erro": "Pessoa não encontrada. "}), 404
 
-    TODO (estagiário): Valide se o valor de nivel_risco está em NIVEIS_RISCO_VALIDOS
-                       antes de chamar o model. Devolva 400 com a lista de valores
-                       válidos na mensagem de erro — isso ajuda muito o frontend.
-    """
-    # TODO: Implementar
-    return jsonify({"erro": "Endpoint não implementado."}), 501
+    return jsonify(pessoa), 200
+
+
+@pessoas_bp.route("/filtros", methods=["GET"])
+def listar_pessoas_com_filtros():
+    apelido = request.args.get("apelido")
+    nome_civil = request.args.get("nome_civil")
+    nivel_risco = request.args.get("nivel_risco")
+    cpf_opcional = request.args.get("cpf_opcional")
+
+    niveis_validos = {"baixo", "medio", "alto", "critico"}
+
+    if nivel_risco and nivel_risco not in niveis_validos:
+        return (
+            jsonify(
+                {
+                    "erro": "nivel_risco inválido. ",
+                    "valores_validos": sorted(niveis_validos),
+                }
+            ),
+            400,
+        )
+    try:
+        pessoas = PessoaRuaModel.listar_com_filtros(
+            apelido=apelido,
+            nome_civil=nome_civil,
+            nivel_risco=nivel_risco,
+            cpf_opcional=cpf_opcional,
+        )
+    except Exception:
+        return jsonify({"erro": "Erro interno ao listar pessoas com filtros."}), 500
+
+    return jsonify(pessoas), 200
