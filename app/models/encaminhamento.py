@@ -25,15 +25,15 @@ A rastreabilidade do encaminhamento é o coração do US10:
 from infra.database import Database  # noqa: F401 — usado nos TODOs abaixo
 
 
-class EncaminhamentoModel:
+class EncaminhamentoModel(Database):
     """
     Gerencia os encaminhamentos para a rede externa de apoio social.
 
     Tipos de destino: CRAS, CREAS, UBS, Hospital, Delegacia, etc.
     """
 
-    @staticmethod
-    def criar(dados: dict) -> dict | None:
+    @classmethod
+    def criar(cls, dados: dict) -> dict | None:
         """
         Gera um novo encaminhamento vinculado a um atendimento (US10).
 
@@ -59,8 +59,8 @@ class EncaminhamentoModel:
             "EncaminhamentoModel.criar() ainda não foi implementado."
         )
 
-    @staticmethod
-    def listar_por_pessoa(pessoa_id: int) -> list[dict]:
+    @classmethod
+    def listar_por_pessoa(cls, pessoa_id: int) -> list[dict]:
         """
         Lista todos os encaminhamentos (formais e de emergência) de uma pessoa.
 
@@ -85,8 +85,8 @@ class EncaminhamentoModel:
             "EncaminhamentoModel.listar_por_pessoa() ainda não foi implementado."
         )
 
-    @staticmethod
-    def listar_por_status(status: str) -> list[dict]:
+    @classmethod
+    def listar_por_status(cls, status: str) -> list[dict]:
         """
         Filtra encaminhamentos por status para monitoramento pelo gestor.
 
@@ -105,8 +105,8 @@ class EncaminhamentoModel:
             "EncaminhamentoModel.listar_por_status() ainda não foi implementado."
         )
 
-    @staticmethod
-    def atualizar_status(encaminhamento_id: int, novo_status: str) -> dict | None:
+    @classmethod
+    def atualizar_status(cls, encaminhamento_id: int, novo_status: str) -> dict | None:
         """
         Atualiza o status do encaminhamento no ciclo de vida rastreável.
 
@@ -130,8 +130,8 @@ class EncaminhamentoModel:
             "EncaminhamentoModel.atualizar_status() ainda não foi implementado."
         )
 
-    @staticmethod
-    def cancelar(encaminhamento_id: int, motivo_cancelamento: str) -> dict | None:
+    @classmethod
+    def cancelar(cls, encaminhamento_id: int, motivo_cancelamento: str) -> dict | None:
         """
         Cancela um encaminhamento emitido indevidamente, registrando o motivo.
 

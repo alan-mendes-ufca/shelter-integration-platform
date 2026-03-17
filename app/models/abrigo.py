@@ -21,13 +21,13 @@ chamar as duas em sequência fica no controller. Anote isso como débito técnic
 from infra.database import Database  # noqa: F401 — usado nos TODOs abaixo
 
 
-class AbrigoModel:
+class AbrigoModel(Database):
     """
     Gerencia o cadastro de abrigos e suas vagas disponíveis em tempo real.
     """
 
-    @staticmethod
-    def criar(dados: dict) -> dict | None:
+    @classmethod
+    def criar(cls, dados: dict) -> dict | None:
         """
         Cadastra um novo abrigo no sistema.
 
@@ -46,8 +46,8 @@ class AbrigoModel:
         # TODO: Implementar
         raise NotImplementedError("AbrigoModel.criar() ainda não foi implementado.")
 
-    @staticmethod
-    def listar(apenas_com_vagas: bool = False) -> list[dict]:
+    @classmethod
+    def listar(cls, apenas_com_vagas: bool = False) -> list[dict]:
         """
         Lista todos os abrigos ativos.
 
@@ -68,8 +68,8 @@ class AbrigoModel:
         # TODO: Implementar
         raise NotImplementedError("AbrigoModel.listar() ainda não foi implementado.")
 
-    @staticmethod
-    def decrementar_vaga(abrigo_id: int) -> bool:
+    @classmethod
+    def decrementar_vaga(cls, abrigo_id: int) -> bool:
         """
         Decrementa o contador de vagas disponíveis do abrigo em 1.
 
@@ -92,8 +92,8 @@ class AbrigoModel:
             "AbrigoModel.decrementar_vaga() ainda não foi implementado."
         )
 
-    @staticmethod
-    def incrementar_vaga(abrigo_id: int) -> bool:
+    @classmethod
+    def incrementar_vaga(cls, abrigo_id: int) -> bool:
         """
         Incrementa o contador de vagas disponíveis do abrigo em 1.
 
@@ -116,7 +116,7 @@ class AbrigoModel:
         )
 
 
-class VagaModel:
+class VagaModel(Database):
     """
     Gerencia as ocupações individuais de vagas em abrigos.
 
@@ -124,8 +124,8 @@ class VagaModel:
     mas REQUER que a pessoa já esteja cadastrada (US08, US09).
     """
 
-    @staticmethod
-    def registrar_entrada(pessoa_id: int, abrigo_id: int) -> dict | None:
+    @classmethod
+    def registrar_entrada(cls, pessoa_id: int, abrigo_id: int) -> dict | None:
         """
         Registra a entrada de uma pessoa em um abrigo (US08).
 
@@ -152,8 +152,8 @@ class VagaModel:
             "VagaModel.registrar_entrada() ainda não foi implementado."
         )
 
-    @staticmethod
-    def registrar_saida(vaga_id: int) -> dict | None:
+    @classmethod
+    def registrar_saida(cls, vaga_id: int) -> dict | None:
         """
         Registra a saída da pessoa do abrigo e libera a vaga (US09).
 

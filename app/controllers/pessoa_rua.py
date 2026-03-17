@@ -30,9 +30,6 @@ As regras de persistência e validações de domínio ligadas ao banco devem fic
 no model. O controller atua como camada de orquestração HTTP.
 """
 
-
-from crypt import methods
-
 from flask import Blueprint, jsonify, request  # noqa: F401
 
 from app.models.pessoa_rua import PessoaRuaModel  # noqa: F401
