@@ -31,7 +31,7 @@ from .controllers.abrigos import abrigos_bp, vagas_bp
 from .controllers.encaminhamentos import encaminhamentos_bp
 from .docs.swagger import init_swagger
 
-API_PREFIX = "/api/v1/"  # Prefixo comum para todas as rotas da API
+API_PREFIX = "/api/v1"  # Prefixo comum para todas as rotas da API
 
 
 def create_app():
