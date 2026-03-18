@@ -1,17 +1,3 @@
-"""
-Model: Profissional
-===================
-
-Estagiário, esse model é simples mas fundamental para rastreabilidade.
-
-Todo atendimento, todo encaminhamento precisa ter um `profissional_id` associado.
-Isso garante que qualquer ação no sistema possa ser auditada:
-"Quem fez isso? Quando? Em qual unidade?"
-
-Por enquanto não implementamos autenticação JWT (isso vem depois),
-mas já estamos estruturando o sistema para suportá-la.
-"""
-
 from infra.database import Database  # noqa: F401 — usado nos TODOs abaixo
 
 
@@ -25,44 +11,66 @@ class ProfissionalModel(Database):
 
     @classmethod
     def criar(cls, dados: dict) -> dict | None:
+        id_pessoa = dados.get("id_pessoa")
+        cargo = dados.get("cargo")
+        registro_conselho = dados.get("registro_conselho")
+
+        if not id_pessoa:
+            raise ValueError("O campo 'id_pessoa' é OBRIGATÓRIO.")
+
+        if not cargo or not str(cargo).strip():
+            raise ValueError("O campo 'cargo' é OBRIGATÓRIO.")
+
+        if registro_conselho:
+            registro_conselho = str(registro_conselho).strip()
+
+        query_insert = """
+            INSERT INTO profissional(id_pessoa, cargo, registro_conselho)
+            VALUES (%s, %s, %s)
         """
-        Cadastra um novo profissional no sistema.
 
-        Args:
-            dados (dict): Dados do profissional.
-                          Obrigatórios: 'nome', 'cargo', 'email'
-                          Opcionais: 'registro' (ex: CRESS-12345)
+        params_insert = (id_pessoa, str(cargo).strip(), registro_conselho)
 
-        Returns:
-            dict | None: Profissional recém-criado.
+        cls.query(query_insert, params_insert)
 
-        TODO (estagiário): INSERT INTO profissional (...) VALUES (...).
-                           O campo `email` tem UNIQUE constraint no banco.
-                           Se tentar cadastrar email duplicado, o MySQL vai lançar
-                           um erro de constraint. Trate isso no controller
-                           retornando HTTP 409 Conflict com mensagem amigável.
+        query_select = """
+            SELECT p.id_profissional, p.id_pessoa, pe.nome, p.cargo, p.registro_conselho
+            FROM profissional p
+            INNER JOIN pessoa pe ON p.id_pessoa = pe.id_pessoa
+            WHERE p.id_pessoa = %s
+            ORDER BY p.id_profissional DESC
+            LIMIT 1
         """
-        # TODO: Implementar
-        raise NotImplementedError(
-            "ProfissionalModel.criar() ainda não foi implementado."
-        )
+
+        rows = cls.query(query_select, (id_pessoa,))
+
+        if rows:
+            return rows[0]
+        return None
 
     @classmethod
     def buscar_por_id(cls, profissional_id: int) -> dict | None:
+
+        query = """
+            SELECT p.id_profissional, p.id_pessoa, pe.nome, p.cargo, p.registro_conselho 
+            FROM profissional p
+            INNER JOIN pessoa pe ON p.id_pessoa = pe.id_pessoa
+            WHERE p.id_profissional = %s
         """
-        Retorna os dados de um profissional pelo ID.
+        params = (profissional_id,)
+        rows = cls.query(query, params)
 
-        Args:
-            profissional_id (int): ID do profissional.
+        if rows:
+            return rows[0]
+        return None
 
-        Returns:
-            dict | None: Dados do profissional ou None se não existir.
-
-        TODO (estagiário): SELECT * FROM profissional WHERE id = %s AND ativo = TRUE.
-                           Note o filtro `ativo = TRUE` — profissionais desativados
-                           não devem aparecer normalmente no sistema.
+    @classmethod
+    def listar(cls) -> list[dict]:
+        query = """
+            SELECT p.id_profissional, p.id_pessoa, pe.nome, p.cargo, p.registro_conselho 
+            FROM profissional p
+            INNER JOIN pessoa pe ON p.id_pessoa = pe.id_pessoa
+            ORDER BY p.id_profissional DESC
         """
-        # TODO: Implementar
-        raise NotImplementedError(
-            "ProfissionalModel.buscar_por_id() ainda não foi implementado."
-        )
+        rows = cls.query(query)
+        return rows or []

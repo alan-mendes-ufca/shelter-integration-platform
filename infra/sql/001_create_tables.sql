@@ -50,17 +50,13 @@ CREATE TABLE IF NOT EXISTS pessoa(
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS profissional (
-    id_profissional INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
-    id_pessoa   INT     UNSIGNED    NOT NULL,
-    nome            VARCHAR(150)    NOT NULL,
-    registro        VARCHAR(50)     UNIQUE,         -- Ex: CRESS-12345 (pode ser nulo em cadastros provisórios)
-    cargo           VARCHAR(100)    NOT NULL,        -- Ex: "Assistente Social", "Educador Social"
-    email           VARCHAR(150)    UNIQUE NOT NULL,
-    ativo           BOOLEAN         NOT NULL DEFAULT TRUE,
-    criado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (id_pessoa) REFERENCES pessoa(id_pessoa)
-    );
+    id_profissional INT UNSIGNED AUTO_INCREMENT,
+    id_pessoa INT UNSIGNED NOT NULL,
+    cargo VARCHAR(100) NOT NULL,
+    registro_conselho VARCHAR(50),
+    PRIMARY KEY (id_profissional),
+    FOREIGN KEY (id_pessoa) REFERENCES pessoa(id_pessoa) ON DELETE CASCADE
+);
 
 -- =============================================================================
 -- TABELA: pessoa_rua
@@ -106,21 +102,16 @@ CREATE TABLE IF NOT EXISTS consentimento (
 -- A lógica de bloqueio é feita na camada de aplicação (Python), não aqui.
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS prontuario (
-    id_prontuario        INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
-    pessoa_id            INT UNSIGNED    NOT NULL UNIQUE,     -- 1 prontuário por pessoa
-    consentimento_id     INT UNSIGNED    NOT NULL,
-    diagnostico_social   TEXT,                                -- Síntese feita pelo assistente social
-    observacoes          TEXT,
-    criado_em            DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    atualizado_em        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_prontuario_pessoa
-        FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id_pessoa_rua)
-        ON DELETE RESTRICT,
-
-    CONSTRAINT fk_prontuario_consentimento
-        FOREIGN KEY (consentimento_id) REFERENCES consentimento(id_consentimento)
-        ON DELETE RESTRICT
+    id_prontuario INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, -- Adicionamos para o Membro 6
+    id_pessoa_rua INT UNSIGNED UNIQUE NOT NULL,            -- O UNIQUE garante a regra de 1:1
+    id_consentimento INT UNSIGNED NOT NULL,
+    id_profissional INT UNSIGNED NOT NULL,
+    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    resumo_historico TEXT,
+    FOREIGN KEY (id_pessoa_rua) REFERENCES pessoa_rua(id_pessoa_rua) ON DELETE CASCADE,
+    FOREIGN KEY (id_profissional) REFERENCES profissional(id_profissional)
+    -- MOCK: Lembre-se de deixar comentado até o Membro 2 fazer a tabela dele
+    -- FOREIGN KEY (id_consentimento) REFERENCES consentimento(id_consentimento)
 );
 
 -- =============================================================================

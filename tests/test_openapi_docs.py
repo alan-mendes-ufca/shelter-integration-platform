@@ -26,6 +26,6 @@ def test_openapi_spec_exposes_registered_api_contract():
     assert spec["swagger"] == "2.0"
     assert "/pessoas" in spec["paths"]
     assert "/atendimentos/{id}" in spec["paths"]
-    assert "/prontuarios/{id}" in spec["paths"]
+    assert "/prontuarios/{id_pessoa_rua}" in spec["paths"]
     assert "/encaminhamentos/{encaminhamento_id}/status" in spec["paths"]
     assert "ErrorResponse" in spec["definitions"]
