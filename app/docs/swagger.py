@@ -126,7 +126,7 @@ SWAGGER_TEMPLATE = {
         },
         {
             "name": "Encaminhamentos",
-            "description": "Fluxo de encaminhamentos formais e de emergência.",
+            "description": "Fluxo de encaminhamentos.",
         },
     ],
     "definitions": {
@@ -425,71 +425,6 @@ SWAGGER_TEMPLATE = {
             "properties": {
                 "pessoa_id": {"type": "integer", "example": 42},
                 "abrigo_id": {"type": "integer", "example": 3},
-            },
-        },
-        "Encaminhamento": {
-            "type": "object",
-            "properties": {
-                "id": {"type": "integer", "example": 18},
-                "atendimento_id": {"type": "integer", "example": 15},
-                "prontuario_id": {"type": "integer", "example": 11},
-                "tipo": {
-                    "type": "string",
-                    "enum": ["formal", "emergencia"],
-                    "example": "formal",
-                },
-                "destino": {"type": "string", "example": "CRAS Vila Nova"},
-                "motivo": {
-                    "type": "string",
-                    "example": "Necessita de benefício eventual.",
-                },
-                "status": {
-                    "type": "string",
-                    "enum": ["pendente", "atendido", "resolvido", "cancelado"],
-                    "example": "pendente",
-                },
-                "cancelamento_motivo": {
-                    "type": "string",
-                    "example": "Duplicidade de emissão.",
-                },
-            },
-        },
-        "EncaminhamentoCreateInput": {
-            "type": "object",
-            "required": ["atendimento_id", "destino", "motivo"],
-            "properties": {
-                "atendimento_id": {"type": "integer", "example": 15},
-                "destino": {"type": "string", "example": "CRAS Vila Nova"},
-                "motivo": {
-                    "type": "string",
-                    "example": "Necessita de benefício eventual.",
-                },
-                "prontuario_id": {"type": "integer", "example": 11},
-            },
-        },
-        "EncaminhamentoStatusInput": {
-            "type": "object",
-            "required": ["status"],
-            "properties": {
-                "status": {
-                    "type": "string",
-                    "enum": ["pendente", "atendido", "resolvido", "cancelado"],
-                    "example": "atendido",
-                },
-                "cancelamento_motivo": {
-                    "type": "string",
-                    "example": "Encaminhamento emitido em duplicidade.",
-                },
-            },
-        },
-        "EncaminhamentoCancelamentoInput": {
-            "type": "object",
-            "required": ["motivo"],
-            "properties": {
-                "motivo": {
-                    "type": "string",
-                    "example": "Encaminhamento duplicado, gerado por engano.",
-                }
             },
         },
     },
@@ -1080,130 +1015,6 @@ SWAGGER_TEMPLATE = {
                             "Saída já registrada para essa vaga.", "ErrorResponse"
                         ),
                     }
-                ),
-            }
-        },
-        "/encaminhamentos": {
-            "post": {
-                "tags": ["Encaminhamentos"],
-                "summary": "Cria um encaminhamento vinculado a um atendimento.",
-                "description": "O tipo é determinado automaticamente: `formal` com prontuário, `emergencia` sem prontuário.",
-                "parameters": [
-                    _body_param(
-                        "EncaminhamentoCreateInput", "Dados mínimos do encaminhamento."
-                    )
-                ],
-                "responses": _default_responses(
-                    success={
-                        "201": _response(
-                            "Encaminhamento criado com sucesso.", "Encaminhamento"
-                        )
-                    },
-                    with_bad_request=True,
-                ),
-            },
-            "get": {
-                "tags": ["Encaminhamentos"],
-                "summary": "Filtra encaminhamentos por status.",
-                "parameters": [
-                    _query_param(
-                        "status",
-                        "Status do encaminhamento.",
-                        required=True,
-                        enum=["pendente", "atendido", "resolvido", "cancelado"],
-                    )
-                ],
-                "responses": _default_responses(
-                    success={
-                        "200": _array_response(
-                            "Lista de encaminhamentos filtrados por status.",
-                            "Encaminhamento",
-                        )
-                    },
-                    with_bad_request=True,
-                ),
-            },
-        },
-        "/encaminhamentos/{id}": {
-            "get": {
-                "tags": ["Encaminhamentos"],
-                "summary": "Lista encaminhamentos de uma pessoa.",
-                "description": "Nesta operação, o parâmetro `id` representa o `pessoa_id`.",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": True,
-                        "type": "integer",
-                        "description": "ID da pessoa consultada.",
-                    }
-                ],
-                "responses": _default_responses(
-                    success={
-                        "200": _array_response(
-                            "Lista de encaminhamentos retornada com sucesso.",
-                            "Encaminhamento",
-                        )
-                    }
-                ),
-            },
-            "delete": {
-                "tags": ["Encaminhamentos"],
-                "summary": "Cancela um encaminhamento.",
-                "description": "Nesta operação, o parâmetro `id` representa o `encaminhamento_id`.",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": True,
-                        "type": "integer",
-                        "description": "ID do encaminhamento a cancelar.",
-                    },
-                    _body_param(
-                        "EncaminhamentoCancelamentoInput",
-                        "Motivo obrigatório do cancelamento.",
-                    ),
-                ],
-                "responses": _default_responses(
-                    success={
-                        "200": _response(
-                            "Encaminhamento cancelado com sucesso.", "Encaminhamento"
-                        ),
-                        "404": _response(
-                            "Encaminhamento não encontrado.", "ErrorResponse"
-                        ),
-                        "409": _response(
-                            "Encaminhamento não pode mais ser cancelado.",
-                            "ErrorResponse",
-                        ),
-                    },
-                    with_bad_request=True,
-                ),
-            },
-        },
-        "/encaminhamentos/{encaminhamento_id}/status": {
-            "put": {
-                "tags": ["Encaminhamentos"],
-                "summary": "Atualiza o status de um encaminhamento.",
-                "parameters": [
-                    _path_param(
-                        "encaminhamento_id", "ID do encaminhamento a atualizar."
-                    ),
-                    _body_param(
-                        "EncaminhamentoStatusInput",
-                        "Novo status e motivo de cancelamento, quando aplicável.",
-                    ),
-                ],
-                "responses": _default_responses(
-                    success={
-                        "200": _response(
-                            "Status atualizado com sucesso.", "Encaminhamento"
-                        ),
-                        "404": _response(
-                            "Encaminhamento não encontrado.", "ErrorResponse"
-                        ),
-                    },
-                    with_bad_request=True,
                 ),
             }
         },
