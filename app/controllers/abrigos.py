@@ -1,30 +1,17 @@
 """
-Controller: Abrigo + Vaga
-==========================
+Controller: Abrigo
+==================
 
-Estagiário, esses dois controllers gerenciam o fluxo de acolhimento em tempo real.
+Endpoints de cadastro e listagem de abrigos.
 
-O ponto mais delicado é a CONSISTÊNCIA entre as duas operações de entrada/saída:
-quando você registra uma entrada (POST /vagas/entrada), duas coisas precisam acontecer:
-  1. INSERT em `vaga` com status='ocupada'
-  2. UPDATE em `abrigo` decrementando `vagas_disponiveis`
-
-Se uma funcionar e a outra falhar, o sistema fica inconsistente.
-Idealmente isso seria uma transação de banco de dados, mas como nosso Database.query()
-executa uma query por vez, por enquanto verificamos manualmente a disponibilidade
-antes de confirmar a entrada.
-
-Anote como débito técnico: "Implementar suporte a transações no Database.query()".
-
-REGRA DE NEGÓCIO IMPORTANTE:
-- Entrada num abrigo NÃO requer prontuário, mas requer pessoa cadastrada.
-- Não coloque verificação de consentimento aqui. Jamais.
+Não há verificação de consentimento aqui.
+Abrigo é infraestrutura — não dado sensível da pessoa.
 """
 
-from flask import Blueprint, request, jsonify  # noqa: F401
-from app.models.abrigo import AbrigoModel, VagaModel  # noqa: F401
+from flask import Blueprint, request, jsonify
+from app.models.abrigo import AbrigoModel
+from infra.erros import ValidationError
 
-# ─── Blueprint: Abrigo ────────────────────────────────────────────────────────
 abrigos_bp = Blueprint("abrigos", __name__, url_prefix="/abrigos")
 
 
@@ -33,26 +20,42 @@ def criar_abrigo():
     """
     POST /abrigos
 
-    Cadastra um novo abrigo no sistema com capacidade total e endereço.
+    Cadastra um novo abrigo no sistema.
 
     Body JSON esperado:
         {
             "nome": "Abrigo Esperança",         (obrigatório)
             "endereco": "Rua das Flores, 100",  (obrigatório)
             "capacidade_total": 50,             (obrigatório, inteiro positivo)
-            "telefone": "(11) 9999-9999"        (opcional)
+            "telefone": "(85) 9999-9999"        (opcional)
         }
 
     Retorna:
-        201 Created + dados do abrigo
-        400 Bad Request se campos obrigatórios faltarem ou capacidade_total <= 0
-
-    TODO (estagiário): Valide que capacidade_total é um inteiro positivo.
-                       No model, `vagas_disponiveis` começa igual a `capacidade_total`.
-                       Não permita que o frontend defina vagas_disponiveis diretamente.
+        201 Created  + dados do abrigo criado
+        400 Bad Request se campos obrigatórios faltarem ou forem inválidos
     """
-    # TODO: Implementar
-    return jsonify({"erro": "Endpoint não implementado."}), 501
+    dados = request.get_json(silent=True)
+    if not dados:
+        return jsonify({"erro": "Body JSON inválido ou ausente."}), 400
+
+    faltando = {"nome", "endereco", "capacidade_total"} - set(dados.keys())
+    if faltando:
+        raise ValidationError(
+            message=f"Campos obrigatórios ausentes: {sorted(faltando)}.",
+            action="Envie 'nome', 'endereco' e 'capacidade_total' no body.",
+        )
+
+    try:
+        abrigo = AbrigoModel.criar(dados)
+    except ValueError as err:
+        return jsonify({"erro": str(err)}), 400
+    except Exception as err:
+        return jsonify({"erro": str(err)}), 500
+
+    if not abrigo:
+        return jsonify({"erro": "Erro ao criar abrigo."}), 500
+
+    return jsonify(abrigo), 201
 
 
 @abrigos_bp.route("", methods=["GET"])
@@ -61,74 +64,45 @@ def listar_abrigos():
     GET /abrigos
     GET /abrigos?vagas=disponivel
 
-    Lista todos os abrigos ativos. Se o query param `vagas=disponivel` for
-    passado, filtra apenas os abrigos com vagas livres (US07).
+    Lista todos os abrigos ativos.
+    Com ?vagas=disponivel, filtra apenas os que têm vagas livres (US07).
 
     Query param (opcional):
-        vagas (str): Se "disponivel", filtra abrigos com vagas > 0.
+        vagas (str): "disponivel" → filtra abrigos com vagas_disponiveis > 0.
 
     Retorna:
-        200 OK + lista de abrigos (com contagem de vagas disponíveis)
-
-    TODO (estagiário): Use request.args.get('vagas') para capturar o filtro.
-                       apenas_com_vagas = request.args.get('vagas') == 'disponivel'
-                       Passe isso para AbrigoModel.listar(apenas_com_vagas).
+        200 OK + lista de abrigos (pode ser vazia)
     """
-    # TODO: Implementar
-    return jsonify({"erro": "Endpoint não implementado."}), 501
+    apenas_com_vagas = request.args.get("vagas") == "disponivel"
+
+    try:
+        abrigos = AbrigoModel.listar(apenas_com_vagas=apenas_com_vagas)
+    except Exception as err:
+        return jsonify({"erro": str(err)}), 500
+
+    return jsonify(abrigos), 200
 
 
-# ─── Blueprint: Vaga ──────────────────────────────────────────────────────────
-vagas_bp = Blueprint("vagas", __name__, url_prefix="/vagas")
-
-
-@vagas_bp.route("/entrada", methods=["POST"])
-def registrar_entrada():
+@abrigos_bp.route("/<int:abrigo_id>", methods=["GET"])
+def buscar_abrigo(abrigo_id: int):
     """
-    POST /vagas/entrada
+    GET /abrigos/:id
 
-    Registra a entrada de uma pessoa em um abrigo.
-    Altera status para "Ocupada" e decrementa o contador de vagas (US08).
-
-    Body JSON esperado:
-        {
-            "pessoa_id": 42,   (obrigatório)
-            "abrigo_id": 3     (obrigatório)
-        }
-
-    Retorna:
-        201 Created + registro da vaga
-        400 Bad Request se campos faltarem
-        409 Conflict se não houver vagas disponíveis no abrigo
-        409 Conflict se a pessoa já estiver acolhida em outro abrigo
-
-    TODO (estagiário): O VagaModel.registrar_entrada() já faz as verificações internas,
-                       mas é boa prática também capturar exceções aqui e retornar
-                       mensagens amigáveis. Não deixe stack traces vazarem para o cliente.
-    """
-    # TODO: Implementar
-    return jsonify({"erro": "Endpoint não implementado."}), 501
-
-
-@vagas_bp.route("/<int:vaga_id>/saida", methods=["PUT"])
-def registrar_saida(vaga_id: int):
-    """
-    PUT /vagas/:id/saida
-
-    Registra a saída da pessoa do abrigo.
-    Libera a vaga e incrementa o contador de vagas do abrigo (US09).
+    Retorna os dados de um abrigo pelo ID, incluindo vagas disponíveis.
 
     Parâmetro de rota:
-        vaga_id (int): ID do registro de ocupação (tabela `vaga`).
+        abrigo_id (int): ID do abrigo.
 
     Retorna:
-        200 OK + vaga atualizada (status='liberada', saida_em preenchido)
-        404 Not Found se a vaga não existir
-        409 Conflict se a vaga já estiver liberada (saída já registrada)
-
-    TODO (estagiário): Chame VagaModel.registrar_saida(vaga_id).
-                       Se retornar None, a vaga não existe ou já estava liberada.
-                       Tente diferenciar os dois casos consultando a vaga antes.
+        200 OK   + dados do abrigo
+        404 Not Found se não existir
     """
-    # TODO: Implementar
-    return jsonify({"erro": "Endpoint não implementado."}), 501
+    try:
+        abrigo = AbrigoModel.buscar_por_id(abrigo_id)
+    except Exception as err:
+        return jsonify({"erro": str(err)}), 500
+
+    if not abrigo:
+        return jsonify({"erro": "Abrigo não encontrado."}), 404
+
+    return jsonify(abrigo), 200

@@ -1,179 +1,155 @@
 """
-Model: Abrigo + Vaga
-====================
+Model: Abrigo
+=============
 
-Estagiário, esses dois models trabalham juntos — são a dupla inseparável
-do módulo de acolhimento.
+Gerencia o cadastro de abrigos e o contador de vagas disponíveis.
 
-`AbrigoModel` cuida do cadastro dos abrigos e da contagem de vagas.
-`VagaModel` cuida das entradas e saídas individuais de pessoas nos abrigos.
+ATENÇÃO — comportamento de Database.query():
+    SELECT  → retorna list[dict]
+    INSERT  → retorna lastrowid (int)
+    UPDATE  → retorna []  (NÃO retorna rowcount)
 
-O ponto mais delicado aqui é a consistência entre as duas tabelas:
-quando uma pessoa ENTRA num abrigo, o `vagas_disponiveis` do abrigo deve
-ser DECREMENTADO. Quando ela SAI, deve ser INCREMENTADO.
-
-Isso idealmente seria feito em uma única TRANSAÇÃO para garantir que
-as duas operações ocorram juntas ou nenhuma ocorra. Por enquanto, o
-Database.query() executa uma query por vez, então a responsabilidade de
-chamar as duas em sequência fica no controller. Anote isso como débito técnico.
+Por isso, toda verificação de "operação teve efeito?" é feita com
+SELECT antes do UPDATE, nunca via rowcount.
 """
 
-from infra.database import Database  # noqa: F401 — usado nos TODOs abaixo
+from infra.database import Database
 
 
 class AbrigoModel(Database):
-    """
-    Gerencia o cadastro de abrigos e suas vagas disponíveis em tempo real.
-    """
-
     @classmethod
     def criar(cls, dados: dict) -> dict | None:
         """
         Cadastra um novo abrigo no sistema.
 
         Args:
-            dados (dict): Dados do abrigo.
-                          Obrigatórios: 'nome', 'endereco', 'capacidade_total'
-                          Opcionais: 'telefone'
+            dados (dict):
+                Obrigatórios: 'nome', 'endereco', 'capacidade_total'
+                Opcionais:    'telefone'
 
         Returns:
             dict | None: Abrigo recém-criado.
 
-        TODO (estagiário): No INSERT, `vagas_disponiveis` deve começar igual
-                           a `capacidade_total` — abrigo novo = todas as vagas livres.
-                           Não deixe o frontend definir `vagas_disponiveis` diretamente.
+        Regra de negócio:
+            vagas_disponiveis começa igual a capacidade_total.
+            O frontend nunca define vagas_disponiveis diretamente.
         """
-        # TODO: Implementar
-        raise NotImplementedError("AbrigoModel.criar() ainda não foi implementado.")
+        nome = (dados.get("nome") or "").strip()
+        endereco = (dados.get("endereco") or "").strip()
+        capacidade = dados.get("capacidade_total")
+
+        if not nome:
+            raise ValueError("nome é obrigatório.")
+        if not endereco:
+            raise ValueError("endereco é obrigatório.")
+        if capacidade is None or int(capacidade) <= 0:
+            raise ValueError("capacidade_total deve ser um inteiro positivo.")
+
+        capacidade = int(capacidade)
+
+        lastrowid = cls.query(
+            """
+            INSERT INTO abrigo
+                (nome, endereco, capacidade_total, vagas_disponiveis, telefone)
+            VALUES
+                (%s, %s, %s, %s, %s)
+            """,
+            (nome, endereco, capacidade, capacidade, dados.get("telefone")),
+        )
+        rows = cls.query("SELECT * FROM abrigo WHERE id_abrigo = %s", (lastrowid,))
+        return rows[0] if rows else None
 
     @classmethod
     def listar(cls, apenas_com_vagas: bool = False) -> list[dict]:
         """
         Lista todos os abrigos ativos.
 
-        Se `apenas_com_vagas=True`, filtra apenas abrigos com vagas disponíveis.
-        Esse filtro é usado no momento do encaminhamento para acolhimento (US07).
-
         Args:
-            apenas_com_vagas (bool): Se True, retorna apenas abrigos com vagas > 0.
+            apenas_com_vagas (bool): Se True, filtra apenas abrigos com
+                                     vagas_disponiveis > 0 (usado em US07).
 
         Returns:
-            list[dict]: Lista de abrigos (com ou sem filtro de vagas).
-
-        TODO (estagiário): Monte a query condicionalmente:
-                           - Se apenas_com_vagas=True:  WHERE ativo=TRUE AND vagas_disponiveis > 0
-                           - Se apenas_com_vagas=False: WHERE ativo=TRUE
-                           Ordene por nome para facilitar a leitura pelo profissional.
+            list[dict]: Lista ordenada por nome.
         """
-        # TODO: Implementar
-        raise NotImplementedError("AbrigoModel.listar() ainda não foi implementado.")
+        if apenas_com_vagas:
+            query = """
+                SELECT * FROM abrigo
+                WHERE ativo = TRUE AND vagas_disponiveis > 0
+                ORDER BY nome
+            """
+        else:
+            query = "SELECT * FROM abrigo WHERE ativo = TRUE ORDER BY nome"
+
+        rows = cls.query(query)
+        return rows or []
+
+    @classmethod
+    def buscar_por_id(cls, abrigo_id: int) -> dict | None:
+        """
+        Retorna um abrigo pelo ID.
+
+        Args:
+            abrigo_id (int): ID do abrigo.
+
+        Returns:
+            dict | None: Dados do abrigo ou None se não existir.
+        """
+        rows = cls.query("SELECT * FROM abrigo WHERE id_abrigo = %s", (abrigo_id,))
+        return rows[0] if rows else None
 
     @classmethod
     def decrementar_vaga(cls, abrigo_id: int) -> bool:
         """
-        Decrementa o contador de vagas disponíveis do abrigo em 1.
+        Decrementa vagas_disponiveis em 1.
 
-        Chamado pelo VagaModel.registrar_entrada() no controller.
+        Faz SELECT antes do UPDATE porque query() não retorna rowcount.
 
         Args:
             abrigo_id (int): ID do abrigo.
 
         Returns:
-            bool: True se decrementado com sucesso, False se sem vagas.
-
-        TODO (estagiário): UPDATE abrigo SET vagas_disponiveis = vagas_disponiveis - 1
-                           WHERE id = %s AND vagas_disponiveis > 0.
-                           Se rowcount == 0, significa que não havia vagas disponíveis.
-                           Retorne False nesse caso para o controller rejeitar a entrada
-                           com HTTP 409 Conflict.
+            bool: True se decrementado, False se abrigo lotado ou inexistente.
         """
-        # TODO: Implementar
-        raise NotImplementedError(
-            "AbrigoModel.decrementar_vaga() ainda não foi implementado."
+        rows = cls.query(
+            """
+            SELECT vagas_disponiveis FROM abrigo
+            WHERE id_abrigo = %s AND ativo = TRUE
+            """,
+            (abrigo_id,),
         )
+        if not rows or rows[0]["vagas_disponiveis"] <= 0:
+            return False
+
+        cls.query(
+            """
+            UPDATE abrigo
+            SET vagas_disponiveis = vagas_disponiveis - 1
+            WHERE id_abrigo = %s AND vagas_disponiveis > 0
+            """,
+            (abrigo_id,),
+        )
+        return True
 
     @classmethod
     def incrementar_vaga(cls, abrigo_id: int) -> bool:
         """
-        Incrementa o contador de vagas disponíveis do abrigo em 1.
+        Incrementa vagas_disponiveis em 1.
 
-        Chamado pelo VagaModel.registrar_saida() no controller.
+        O WHERE vagas_disponiveis < capacidade_total complementa o
+        CHECK constraint do banco, impedindo ultrapassar o limite.
 
         Args:
             abrigo_id (int): ID do abrigo.
 
         Returns:
-            bool: True se incrementado com sucesso.
-
-        TODO (estagiário): UPDATE abrigo SET vagas_disponiveis = vagas_disponiveis + 1
-                           WHERE id = %s AND vagas_disponiveis < capacidade_total.
-                           O CHECK constraint no banco já protege contra ultrapassar
-                           a capacidade, mas é boa prática verificar na aplicação também.
+            bool: True sempre (constraint do banco protege o limite superior).
         """
-        # TODO: Implementar
-        raise NotImplementedError(
-            "AbrigoModel.incrementar_vaga() ainda não foi implementado."
+        cls.query(
+            """
+            UPDATE abrigo
+            SET vagas_disponiveis = vagas_disponiveis + 1
+            WHERE id_abrigo = %s AND vagas_disponiveis < capacidade_total
+            """,
+            (abrigo_id,),
         )
-
-
-class VagaModel(Database):
-    """
-    Gerencia as ocupações individuais de vagas em abrigos.
-
-    Importante: entrada/saída em abrigo não requer prontuário,
-    mas REQUER que a pessoa já esteja cadastrada (US08, US09).
-    """
-
-    @classmethod
-    def registrar_entrada(cls, pessoa_id: int, abrigo_id: int) -> dict | None:
-        """
-        Registra a entrada de uma pessoa em um abrigo (US08).
-
-        Altera o status da vaga para 'ocupada' e dispara o
-        decremento do contador no AbrigoModel.
-
-        Args:
-            pessoa_id (int): ID da pessoa entrando no abrigo.
-            abrigo_id (int): ID do abrigo.
-
-        Returns:
-            dict | None: Registro da vaga criada.
-
-        TODO (estagiário): Antes de inserir:
-                           1. Chame AbrigoModel.decrementar_vaga(abrigo_id).
-                              Se retornar False, aborte e retorne erro.
-                           2. Verifique se a pessoa já tem uma vaga com status='ocupada'
-                              em QUALQUER abrigo. Uma pessoa não pode estar em dois
-                              abrigos ao mesmo tempo.
-                           3. Se tudo OK, faça o INSERT em `vaga`.
-        """
-        # TODO: Implementar
-        raise NotImplementedError(
-            "VagaModel.registrar_entrada() ainda não foi implementado."
-        )
-
-    @classmethod
-    def registrar_saida(cls, vaga_id: int) -> dict | None:
-        """
-        Registra a saída da pessoa do abrigo e libera a vaga (US09).
-
-        Atualiza o status para 'liberada', preenche `saida_em`
-        e incrementa o contador de vagas no AbrigoModel.
-
-        Args:
-            vaga_id (int): ID da vaga (registro de ocupação).
-
-        Returns:
-            dict | None: Vaga atualizada com status 'liberada'.
-
-        TODO (estagiário): 1. Busque a vaga pelo ID. Se não existir ou já estiver
-                              'liberada', retorne None (controller retorna 404/409).
-                           2. Faça UPDATE vaga SET status='liberada', saida_em=NOW()
-                              WHERE id=%s AND status='ocupada'.
-                           3. Chame AbrigoModel.incrementar_vaga(abrigo_id) para
-                              devolver a vaga ao contador do abrigo.
-        """
-        # TODO: Implementar
-        raise NotImplementedError(
-            "VagaModel.registrar_saida() ainda não foi implementado."
-        )
+        return True

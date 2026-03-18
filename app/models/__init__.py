@@ -18,7 +18,8 @@ from .consentimento import ConsentimentoModel
 from .atendimento import AtendimentoModel
 from .profissional import ProfissionalModel
 from .prontuario import ProntuarioModel
-from .abrigo import AbrigoModel, VagaModel
+from .abrigo import AbrigoModel
+from .vaga import VagaModel
 from .encaminhamento import EncaminhamentoModel
 
 __all__ = [
