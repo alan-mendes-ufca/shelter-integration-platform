@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS vaga_cama (
 -- =============================================================================
 -- TABELA: estadia
 -- Registra a ocupação de uma cama específica por uma pessoa.
--- Substitui a tabela `vaga` — agora controlamos cama individual + motivo de saída.
+-- Substitui a tabela vaga  — agora controlamos cama individual + motivo de saída.
 -- Não requer prontuário, mas requer pessoa cadastrada (US08, US09).
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS estadia (
