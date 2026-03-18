@@ -224,6 +224,9 @@ CREATE TABLE IF NOT EXISTS historico_gestao (
 
     PRIMARY KEY (id_gestor_fk, id_abrigo_fk, data_inicio_pk),
 
+    INDEX idx_hist_gestao_abrigo (id_abrigo_fk),
+    INDEX idx_hist_gestao_fim (data_fim),
+
     CONSTRAINT fk_hist_gestao_pessoa
         FOREIGN KEY (id_gestor_fk) REFERENCES pessoa(id_pessoa)
         ON DELETE RESTRICT,
@@ -246,5 +249,3 @@ CREATE INDEX idx_atendimento_unidade   ON atendimento(unidade);
 CREATE INDEX idx_atendimento_data      ON atendimento(realizado_em);
 CREATE INDEX idx_encaminhamento_status ON encaminhamento(status_acompanhamento);
 CREATE INDEX idx_vaga_status           ON vaga(status);
-CREATE INDEX idx_hist_gestao_abrigo    ON historico_gestao(id_abrigo_fk);
-CREATE INDEX idx_hist_gestao_fim       ON historico_gestao(data_fim);
