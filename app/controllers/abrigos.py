@@ -157,46 +157,50 @@ def registrar_entrada():
     return jsonify(estadia), 201
 
 
-@vagas_bp.route("/<int:pessoa_id>/saida", methods=["PUT"])
-def registrar_saida(pessoa_id: int):
+@vagas_bp.route("/saida", methods=["PUT"])
+def registrar_saida():
     """
-    PUT /vagas/:pessoa_id/saida
+    PUT /vagas/saida
 
-    Registra a saída da pessoa do abrigo, libera a cama e atualiza o contador (US09).
+    Registra a saída de uma pessoa pelo número da cama e abrigo (US09).
+    Libera a cama e incrementa o contador de vagas do abrigo.
 
-    ATENÇÃO: o identificador na rota agora é pessoa_id (não mais vaga_id),
-    pois a PK de estadia é (id_pessoa_rua_fk, data_entrada_pk) e buscamos
-    sempre pela estadia ativa da pessoa.
-
-    Parâmetro de rota:
-        pessoa_id (int): ID da pessoa (pessoa_rua).
-
-    Body JSON (opcional):
-        motivo_saida (str): Motivo da saída.
+    Body JSON:
+        numero_cama  (int, obrigatório)
+        abrigo_id    (int, obrigatório)
+        motivo_saida (str, opcional)
 
     Retorna:
-        200 + estadia encerrada (com data_saida preenchida)
-        404 se a pessoa não tiver estadia ativa
+        200 + estadia encerrada (com data_saida e motivo_saida preenchidos)
+        400 se campos obrigatórios faltarem
+        404 se a cama não tiver estadia ativa
     """
-    dados = request.get_json(silent=True) or {}
+    dados = request.get_json(silent=True)
+    if not dados:
+        return jsonify({"erro": "Body JSON inválido ou ausente."}), 400
+
+    numero_cama = dados.get("numero_cama")
+    abrigo_id = dados.get("abrigo_id")
     motivo_saida = dados.get("motivo_saida")
 
-    # Verifica estadia ativa antes de tentar encerrar
-    estadia_ativa = EstadiaModel._buscar_ativa_por_pessoa(pessoa_id)
-    if not estadia_ativa:
+    if not numero_cama or not abrigo_id:
         return jsonify(
-            {"erro": "Pessoa não possui estadia ativa em nenhum abrigo."}
-        ), 404
+            {"erro": "Os campos 'numero_cama' e 'abrigo_id' são obrigatórios."}
+        ), 400
 
     try:
-        estadia = EstadiaModel.registrar_saida(pessoa_id, motivo_saida)
+        estadia = EstadiaModel.registrar_saida_por_cama(
+            int(numero_cama), int(abrigo_id), motivo_saida
+        )
     except Exception as err:
         return jsonify(
             {"erro": "Erro interno ao registrar saída.", "detalhes": str(err)}
         ), 500
 
     if not estadia:
-        return jsonify({"erro": "Não foi possível registrar a saída."}), 500
+        return jsonify(
+            {"erro": "Nenhuma estadia ativa encontrada para essa cama."}
+        ), 404
 
     return jsonify(estadia), 200
 

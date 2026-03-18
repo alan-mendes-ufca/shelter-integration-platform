@@ -234,6 +234,19 @@ class EstadiaModel(Database):
         return rows[0] if rows else None
 
     @classmethod
+    def _buscar_ativa_por_cama(cls, numero_cama: int, abrigo_id: int) -> dict | None:
+        """Retorna a estadia ativa de uma cama específica, se houver."""
+        rows = cls.query(
+            """
+            SELECT * FROM estadia
+            WHERE numero_cama_fk = %s AND id_abrigo_fk = %s AND data_saida IS NULL
+            LIMIT 1
+            """,
+            (numero_cama, abrigo_id),
+        )
+        return rows[0] if rows else None
+
+    @classmethod
     def registrar_entrada(cls, pessoa_id: int, abrigo_id: int) -> dict | None:
         """
         Registra a entrada de uma pessoa em um abrigo, alocando uma cama (US08).
@@ -273,6 +286,50 @@ class EstadiaModel(Database):
         )
 
         return cls._buscar_ativa_por_pessoa(pessoa_id)
+
+    @classmethod
+    def registrar_saida_por_cama(
+        cls, numero_cama: int, abrigo_id: int, motivo_saida: str | None = None
+    ) -> dict | None:
+        """
+        Registra a saída pelo número da cama e abrigo (US09).
+
+        Args:
+            numero_cama (int): Número da cama sendo desocupada.
+            abrigo_id (int): ID do abrigo.
+            motivo_saida (str, optional): Motivo da saída.
+
+        Returns:
+            dict | None: Estadia encerrada, ou None se a cama não tiver estadia ativa.
+        """
+        estadia = cls._buscar_ativa_por_cama(numero_cama, abrigo_id)
+        if not estadia:
+            return None  # controller → 404
+
+        pessoa_id = estadia["id_pessoa_rua_fk"]
+
+        cls.query(
+            """
+            UPDATE estadia
+            SET data_saida = NOW(), motivo_saida = %s
+            WHERE id_pessoa_rua_fk = %s AND data_saida IS NULL
+            """,
+            (motivo_saida, pessoa_id),
+        )
+
+        VagaCamaModel.liberar_cama(numero_cama, abrigo_id)
+        AbrigoModel.incrementar_vaga(abrigo_id)
+
+        rows = cls.query(
+            """
+            SELECT * FROM estadia
+            WHERE id_pessoa_rua_fk = %s
+            ORDER BY data_entrada_pk DESC
+            LIMIT 1
+            """,
+            (pessoa_id,),
+        )
+        return rows[0] if rows else None
 
     @classmethod
     def registrar_saida(
