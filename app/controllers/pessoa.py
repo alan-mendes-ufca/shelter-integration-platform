@@ -31,6 +31,7 @@ no model. O controller atua como camada de orquestração HTTP.
 from flask import Blueprint, jsonify, request  # noqa: F401
 
 from app.models.pessoa import PessoaModel  # noqa: F401
+from infra.erros import InternalServerError, NotFoundError, ValidationError
 
 pessoa_bp = Blueprint("pessoa", __name__)
 
@@ -39,44 +40,38 @@ pessoa_bp = Blueprint("pessoa", __name__)
 def cria_pessoa():
     dados = request.get_json(silent=True)
     if not dados:
-        return jsonify({"erro": "Body JSON inválido ou ausente. "}), 400
+        raise ValidationError(
+            message="Body JSON inválido ou ausente.",
+            action="Envie um JSON válido no corpo da requisição.",
+        )
 
-    try:
-        pessoa = PessoaModel.criar(dados)
-
-    except ValueError as err:
-        return jsonify({"erro": str(err)}), 400
-
-    except Exception as err:
-        return jsonify({"erro": str(err)}), 500
+    pessoa = PessoaModel.criar(dados)
 
     if not pessoa:
-        return jsonify({"erro": "Erro ao criar pessoa. "}), 500
+        raise InternalServerError(
+            message="Erro ao criar pessoa.",
+            action="Tente novamente mais tarde.",
+        )
 
     return jsonify(pessoa), 201
 
 
 @pessoa_bp.route("/<int:pessoa_id>", methods=["GET"])
 def buscar_por_id(pessoa_id: int):
-    try:
-        pessoa = PessoaModel.buscar_por_id(pessoa_id)
-
-    except Exception as err:
-        return jsonify({"erro": str(err)}), 500
+    pessoa = PessoaModel.buscar_por_id(pessoa_id)
 
     if not pessoa:
-        return jsonify({"erro": "Pessoa não encontrada."}), 404
+        raise NotFoundError(
+            message="Pessoa não encontrada.",
+            action="Verifique o ID informado.",
+        )
 
     return jsonify(pessoa), 200
 
 
 @pessoa_bp.route("", methods=["GET"])
 def listar_pessoas():
-    try:
-        pessoas = PessoaModel.listar()
-
-    except Exception as err:
-        return jsonify({"erro": str(err)}), 500
+    pessoas = PessoaModel.listar()
 
     return jsonify(pessoas), 200
 
@@ -85,21 +80,17 @@ def listar_pessoas():
 def atualizar_pessoa(pessoa_id: int):
     dados = request.get_json(silent=True)
     if not dados:
-        return jsonify({"erro": "JSON inválido ou ausente."}), 400
+        raise ValidationError(
+            message="JSON inválido ou ausente.",
+            action="Envie um JSON válido no corpo da requisição.",
+        )
 
-    try:
-        pessoa_atual = PessoaModel.buscar_por_id(pessoa_id)
-        if not pessoa_atual:
-            return jsonify({"erro": "Pessoa não encontrada"}), 404
-
-        pessoa = PessoaModel.atualizar(pessoa_id, dados)
-    except ValueError as err:
-        return jsonify({"erro": str(err)}), 400
-
-    except Exception as err:
-        return jsonify({"erro": str(err)}), 500
+    pessoa = PessoaModel.atualizar(pessoa_id, dados)
 
     if not pessoa:
-        return jsonify({"erro": "Pessoa não encontrada."}), 404
+        raise NotFoundError(
+            message="Pessoa não encontrada.",
+            action="Verifique o ID informado.",
+        )
 
     return jsonify(pessoa), 200

@@ -1,4 +1,5 @@
 from infra.database import Database
+from infra.erros import ValidationError
 
 
 class PessoaModel(Database):
@@ -18,7 +19,10 @@ class PessoaModel(Database):
     def _texto_obrigatorio(valor: object, campo: str) -> str:
         texto = str(valor or "").strip()
         if not texto:
-            raise ValueError(f"{campo} é obrigatório.")
+            raise ValidationError(
+                message=f"{campo} é obrigatório.",
+                action=f"Preencha o campo '{campo}' com um valor válido.",
+            )
         return texto
 
     @classmethod
