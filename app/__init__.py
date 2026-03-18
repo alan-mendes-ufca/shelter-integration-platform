@@ -27,8 +27,9 @@ from .controllers.pessoa_rua import pessoarua_bp
 from .controllers.pessoa import pessoa_bp
 from .controllers.consentimentos import consentimentos_bp
 from .controllers.atendimentos import atendimentos_bp
-from .controllers.prontuarios import prontuarios_bp
-from .controllers.abrigos import abrigos_bp, vagas_bp
+from .controllers.prontuarios import profissionais_bp, prontuarios_bp
+from .controllers.abrigos import abrigos_bp
+from .controllers.vagas import vagas_bp
 from .controllers.encaminhamentos import encaminhamentos_bp
 from .controllers.professional_controller import profissionais_bp
 from .docs.swagger import init_swagger
