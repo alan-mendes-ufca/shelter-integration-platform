@@ -82,16 +82,17 @@ CREATE TABLE IF NOT EXISTS pessoa_rua(
 -- Só bloqueia acesso ao prontuário (US02, US03).
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS consentimento (
-    id_consentimento INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
-    pessoa_id        INT UNSIGNED    NOT NULL,
-    ativo            BOOLEAN         NOT NULL DEFAULT TRUE,   -- FALSE = revogado
-    registrado_em    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    revogado_em      DATETIME,                                -- Preenchido quando/se revogado (US03)
-    observacao       TEXT,                                    -- Contexto do consentimento ou revogação
 
-    CONSTRAINT fk_consentimento_pessoa
+    pessoa_id   INT UNSIGNED PRIMARY KEY,
+
+    data_assinatura DATETIME,
+    ativo           BOOLEAN   NOT NULL DEFAULT TRUE,   
+    validade        DATETIME,
+    observacao      TEXT,
+
+    CONSTRAINT fk_consentimento_pessoa_rua
         FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id_pessoa_rua)
-        ON DELETE RESTRICT                                   -- Não permite deletar pessoa com consentimento
+        ON DELETE RESTRICT                             
 );
 
 -- =============================================================================

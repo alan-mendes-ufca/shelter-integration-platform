@@ -219,8 +219,7 @@ SWAGGER_TEMPLATE = {
         "Consentimento": {
             "type": "object",
             "properties": {
-                "id": {"type": "integer", "example": 8},
-                "pessoa_id": {"type": "integer", "example": 42},
+                "pessoa_id": {"type": "integer", "example": 1},
                 "ativo": {"type": "boolean", "example": True},
                 "observacao": {
                     "type": "string",
@@ -232,7 +231,7 @@ SWAGGER_TEMPLATE = {
             "type": "object",
             "required": ["pessoa_id"],
             "properties": {
-                "pessoa_id": {"type": "integer", "example": 42},
+                "pessoa_id": {"type": "integer", "example": 1},
                 "observacao": {
                     "type": "string",
                     "example": "Pessoa concordou com o tratamento dos dados.",
@@ -698,20 +697,6 @@ SWAGGER_TEMPLATE = {
                             "Consentimento não encontrado.", "ErrorResponse"
                         ),
                         "409": _response("Consentimento já revogado.", "ErrorResponse"),
-                    }
-                ),
-            }
-        },
-        "/consentimentos/historico/{pessoa_id}": {
-            "get": {
-                "tags": ["Consentimentos"],
-                "summary": "Lista o histórico de consentimentos de uma pessoa.",
-                "parameters": [_path_param("pessoa_id", "ID da pessoa consultada.")],
-                "responses": _default_responses(
-                    success={
-                        "200": _array_response(
-                            "Histórico encontrado com sucesso.", "Consentimento"
-                        )
                     }
                 ),
             }
