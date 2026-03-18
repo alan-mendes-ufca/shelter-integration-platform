@@ -59,19 +59,12 @@ class ProntuarioModel(Database):
 
         id_consentimento_atual = prontuario_atual["id_consentimento"]
 
-        # --- INÍCIO DO MOCK DE CONSENTIMENTO ---
-        # Quando o Membro 2 terminar, apague este mock e volte com o SELECT no banco
-
-        # Vamos fingir que o ID 999 significa "Consentimento Revogado"
+        # MOCK PARA CONSENTIMENTO REVOGADO
         if id_consentimento_atual == 999:
             raise PermissionError(
-                "Edição bloqueada (MOCK): O morador de rua revogou o consentimento de uso de dados."
+                "Edição bloqueada: O morador de rua revogou o consentimento de uso de dados."
             )
 
-        # Se for qualquer outro ID, o mock deixa a execução continuar normalmente...
-        # --- FIM DO MOCK ---
-
-        # 2. Atualização na tabela PRONTUÁRIO
         campos_prontuario = []
         valores_prontuario = []
 
@@ -92,7 +85,6 @@ class ProntuarioModel(Database):
             query_prontuario = f"UPDATE prontuario SET {', '.join(campos_prontuario)} WHERE id_pessoa_rua = %s"
             cls.query(query_prontuario, tuple(valores_prontuario))
 
-        # 3. Atualização na tabela PESSOA_RUA (Grau de Vulnerabilidade / nivel_risco)
         if "grau_vulnerabilidade" in dados:
             nivel_risco = dados["grau_vulnerabilidade"]
             niveis_validos = {"baixo", "medio", "alto", "critico"}

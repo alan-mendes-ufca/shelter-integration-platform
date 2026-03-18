@@ -42,7 +42,7 @@ class ProfissionalModel(Database):
             LIMIT 1
         """
 
-        rows = cls.query(query_select, (id_pessoa))
+        rows = cls.query(query_select, (id_pessoa,))
 
         if rows:
             return rows[0]
