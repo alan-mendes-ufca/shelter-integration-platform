@@ -219,7 +219,8 @@ SWAGGER_TEMPLATE = {
         "Consentimento": {
             "type": "object",
             "properties": {
-                "pessoa_id": {"type": "integer", "example": 1},
+                "id": {"type": "integer", "example": 8},
+                "pessoa_id": {"type": "integer", "example": 42},
                 "ativo": {"type": "boolean", "example": True},
                 "observacao": {
                     "type": "string",
@@ -231,7 +232,7 @@ SWAGGER_TEMPLATE = {
             "type": "object",
             "required": ["pessoa_id"],
             "properties": {
-                "pessoa_id": {"type": "integer", "example": 1},
+                "pessoa_id": {"type": "integer", "example": 42},
                 "observacao": {
                     "type": "string",
                     "example": "Pessoa concordou com o tratamento dos dados.",
@@ -389,41 +390,71 @@ SWAGGER_TEMPLATE = {
         "Abrigo": {
             "type": "object",
             "properties": {
-                "id": {"type": "integer", "example": 3},
+                "id_abrigo": {"type": "integer", "example": 3},
                 "nome": {"type": "string", "example": "Abrigo Esperança"},
                 "endereco": {"type": "string", "example": "Rua das Flores, 100"},
                 "capacidade_total": {"type": "integer", "example": 50},
                 "vagas_disponiveis": {"type": "integer", "example": 12},
-                "telefone": {"type": "string", "example": "(11) 9999-9999"},
+                "telefone": {"type": "string", "example": "(85) 9999-9999"},
+                "ativo": {"type": "boolean", "example": True},
             },
         },
         "AbrigoCreateInput": {
             "type": "object",
             "required": ["nome", "endereco", "capacidade_total"],
             "properties": {
-                "nome": {"type": "string"},
-                "endereco": {"type": "string"},
-                "capacidade_total": {"type": "integer", "minimum": 1},
-                "telefone": {"type": "string"},
+                "nome": {"type": "string", "example": "Abrigo Esperança"},
+                "endereco": {"type": "string", "example": "Rua das Flores, 100"},
+                "capacidade_total": {"type": "integer", "minimum": 1, "example": 50},
+                "telefone": {"type": "string", "example": "(85) 9999-9999"},
             },
         },
-        "Vaga": {
+        # ── Vaga Cama ─────────────────────────────────────────────────────────
+        "VagaCama": {
             "type": "object",
             "properties": {
-                "id": {"type": "integer", "example": 21},
-                "pessoa_id": {"type": "integer", "example": 42},
-                "abrigo_id": {"type": "integer", "example": 3},
-                "status": {"type": "string", "example": "ocupada"},
-                "entrada_em": {"type": "string", "example": "2026-03-05 18:10"},
-                "saida_em": {"type": "string", "example": "2026-03-06 08:00"},
+                "numero_cama_pk": {"type": "integer", "example": 3},
+                "id_abrigo_fk": {"type": "integer", "example": 1},
+                "status": {
+                    "type": "string",
+                    "enum": ["livre", "ocupada"],
+                    "example": "ocupada",
+                },
             },
         },
-        "VagaEntradaInput": {
+        # ── Estadia ───────────────────────────────────────────────────────────
+        "Estadia": {
+            "type": "object",
+            "properties": {
+                "id_pessoa_rua_fk": {"type": "integer", "example": 42},
+                "data_entrada_pk": {"type": "string", "example": "2026-03-18 20:49:53"},
+                "numero_cama_fk": {"type": "integer", "example": 3},
+                "id_abrigo_fk": {"type": "integer", "example": 1},
+                "data_saida": {"type": "string", "example": "2026-03-19 08:00:00"},
+                "motivo_saida": {
+                    "type": "string",
+                    "example": "Transferido para outro abrigo",
+                },
+            },
+        },
+        "EstadiaEntradaInput": {
             "type": "object",
             "required": ["pessoa_id", "abrigo_id"],
             "properties": {
                 "pessoa_id": {"type": "integer", "example": 42},
-                "abrigo_id": {"type": "integer", "example": 3},
+                "abrigo_id": {"type": "integer", "example": 1},
+            },
+        },
+        "EstadiaSaidaInput": {
+            "type": "object",
+            "required": ["numero_cama", "abrigo_id"],
+            "properties": {
+                "numero_cama": {"type": "integer", "example": 3},
+                "abrigo_id": {"type": "integer", "example": 1},
+                "motivo_saida": {
+                    "type": "string",
+                    "example": "Transferido para outro abrigo",
+                },
             },
         },
     },
@@ -462,8 +493,7 @@ SWAGGER_TEMPLATE = {
                 "responses": _default_responses(
                     success={
                         "200": _array_response(
-                            "Lista de pessoas retornada com sucesso.",
-                            "Usuario",
+                            "Lista de pessoas retornada com sucesso.", "Usuario"
                         )
                     }
                 ),
@@ -521,10 +551,6 @@ SWAGGER_TEMPLATE = {
             "get": {
                 "tags": ["Pessoa em Situação de Rua"],
                 "summary": "Busca pessoas por apelido.",
-                "description": (
-                    "Faz busca parcial para evitar cadastros duplicados. "
-                    "Use o parâmetro de query obrigatório `apelido`."
-                ),
                 "parameters": [
                     _query_param(
                         "apelido",
@@ -557,11 +583,6 @@ SWAGGER_TEMPLATE = {
             "put": {
                 "tags": ["Pessoa em Situação de Rua"],
                 "summary": "Atualiza dados de uma pessoa.",
-                "description": (
-                    "Atualiza parcialmente os campos da pessoa. "
-                    "Campos aceitos: apelido, descricao_fisica, nome_civil e cpf_opcional. "
-                    "Quando informado, `cpf_opcional` é validado antes da atualização."
-                ),
                 "parameters": [
                     _path_param(
                         "id_pessoa_rua", "ID da pessoa em situação de rua a atualizar."
@@ -600,31 +621,17 @@ SWAGGER_TEMPLATE = {
             "get": {
                 "tags": ["Pessoa em Situação de Rua"],
                 "summary": "Lista pessoas com filtros opcionais.",
-                "description": (
-                    "Permite filtrar por apelido, nome_civil, nivel_risco e "
-                    "cpf_opcional (com ou sem máscara)."
-                ),
                 "parameters": [
-                    _query_param(
-                        "apelido",
-                        "Filtro parcial por apelido.",
-                        required=False,
-                    ),
-                    _query_param(
-                        "nome_civil",
-                        "Filtro parcial por nome civil.",
-                        required=False,
-                    ),
+                    _query_param("apelido", "Filtro parcial por apelido."),
+                    _query_param("nome_civil", "Filtro parcial por nome civil."),
                     _query_param(
                         "nivel_risco",
                         "Filtro por nível de risco.",
-                        required=False,
                         enum=["baixo", "medio", "alto", "critico"],
                     ),
                     _query_param(
                         "cpf_opcional",
                         "Filtro por CPF opcional (com ou sem máscara).",
-                        required=False,
                     ),
                 ],
                 "responses": _default_responses(
@@ -697,6 +704,20 @@ SWAGGER_TEMPLATE = {
                             "Consentimento não encontrado.", "ErrorResponse"
                         ),
                         "409": _response("Consentimento já revogado.", "ErrorResponse"),
+                    }
+                ),
+            }
+        },
+        "/consentimentos/historico/{pessoa_id}": {
+            "get": {
+                "tags": ["Consentimentos"],
+                "summary": "Lista o histórico de consentimentos de uma pessoa.",
+                "parameters": [_path_param("pessoa_id", "ID da pessoa consultada.")],
+                "responses": _default_responses(
+                    success={
+                        "200": _array_response(
+                            "Histórico encontrado com sucesso.", "Consentimento"
+                        )
                     }
                 ),
             }
@@ -832,11 +853,22 @@ SWAGGER_TEMPLATE = {
                         "201": _response(
                             "Profissional criado com sucesso.", "Profissional"
                         ),
-                        "409": _response("E-mail já cadastrado.", "ErrorResponse"),
                     },
                     with_bad_request=True,
                 ),
-            }
+            },
+            "get": {
+                "tags": ["Profissionais"],
+                "summary": "Lista profissionais cadastrados.",
+                "responses": _default_responses(
+                    success={
+                        "200": _array_response(
+                            "Lista de profissionais retornada com sucesso.",
+                            "Profissional",
+                        )
+                    }
+                ),
+            },
         },
         "/profissionais/{profissional_id}": {
             "get": {
@@ -885,7 +917,6 @@ SWAGGER_TEMPLATE = {
             "get": {
                 "tags": ["Prontuários"],
                 "summary": "Retorna o prontuário integrado de uma pessoa.",
-                "description": "Busca o prontuário completo, incluindo os dados de vulnerabilidade da pessoa.",
                 "parameters": [
                     {
                         "name": "id_pessoa_rua",
@@ -905,7 +936,6 @@ SWAGGER_TEMPLATE = {
             "put": {
                 "tags": ["Prontuários"],
                 "summary": "Atualiza um prontuário existente.",
-                "description": "Atualiza o histórico, profissional, consentimento e o grau de vulnerabilidade simultaneamente.",
                 "parameters": [
                     {
                         "name": "id_pessoa_rua",
@@ -933,10 +963,15 @@ SWAGGER_TEMPLATE = {
                 ),
             },
         },
+        # ── Abrigos ───────────────────────────────────────────────────────────
         "/abrigos": {
             "post": {
                 "tags": ["Abrigos"],
                 "summary": "Cadastra um abrigo no sistema.",
+                "description": (
+                    "Ao cadastrar, todas as camas são criadas automaticamente "
+                    "em vaga_cama com status 'livre'."
+                ),
                 "parameters": [
                     _body_param("AbrigoCreateInput", "Dados de cadastro do abrigo.")
                 ],
@@ -951,7 +986,7 @@ SWAGGER_TEMPLATE = {
                 "parameters": [
                     _query_param(
                         "vagas",
-                        "Use `disponivel` para filtrar apenas abrigos com vagas livres.",
+                        "Use 'disponivel' para filtrar apenas abrigos com vagas livres.",
                         enum=["disponivel"],
                     )
                 ],
@@ -964,20 +999,40 @@ SWAGGER_TEMPLATE = {
                 ),
             },
         },
+        "/abrigos/{abrigo_id}/camas": {
+            "get": {
+                "tags": ["Abrigos"],
+                "summary": "Lista as camas de um abrigo com seus status.",
+                "description": "Retorna todas as camas do abrigo indicando quais estão livres ou ocupadas.",
+                "parameters": [_path_param("abrigo_id", "ID do abrigo.")],
+                "responses": _default_responses(
+                    success={
+                        "200": _array_response(
+                            "Lista de camas retornada com sucesso.", "VagaCama"
+                        )
+                    }
+                ),
+            }
+        },
+        # ── Vagas (Estadia) ───────────────────────────────────────────────────
         "/vagas/entrada": {
             "post": {
                 "tags": ["Vagas"],
                 "summary": "Registra a entrada de uma pessoa em um abrigo.",
+                "description": (
+                    "Aloca automaticamente a primeira cama livre do abrigo. "
+                    "Não requer prontuário ou consentimento."
+                ),
                 "parameters": [
                     _body_param(
-                        "VagaEntradaInput", "Pessoa e abrigo para o acolhimento."
+                        "EstadiaEntradaInput", "Pessoa e abrigo para o acolhimento."
                     )
                 ],
                 "responses": _default_responses(
                     success={
-                        "201": _response("Entrada registrada com sucesso.", "Vaga"),
+                        "201": _response("Entrada registrada com sucesso.", "Estadia"),
                         "409": _response(
-                            "Sem vagas disponíveis ou pessoa já acolhida.",
+                            "Sem camas disponíveis ou pessoa já acolhida.",
                             "ErrorResponse",
                         ),
                     },
@@ -985,21 +1040,55 @@ SWAGGER_TEMPLATE = {
                 ),
             }
         },
-        "/vagas/{vaga_id}/saida": {
+        "/vagas/saida": {
             "put": {
                 "tags": ["Vagas"],
-                "summary": "Registra a saída de uma pessoa do abrigo.",
+                "summary": "Registra a saída de uma pessoa pelo número da cama.",
+                "description": (
+                    "Identifica a estadia ativa pela cama e abrigo informados, "
+                    "registra a saída, libera a cama e incrementa o contador de vagas."
+                ),
                 "parameters": [
-                    _path_param("vaga_id", "ID do registro de ocupação da vaga.")
+                    _body_param(
+                        "EstadiaSaidaInput",
+                        "Número da cama, abrigo e motivo opcional da saída.",
+                    )
                 ],
                 "responses": _default_responses(
                     success={
-                        "200": _response("Saída registrada com sucesso.", "Vaga"),
-                        "404": _response("Vaga não encontrada.", "ErrorResponse"),
-                        "409": _response(
-                            "Saída já registrada para essa vaga.", "ErrorResponse"
+                        "200": _response("Saída registrada com sucesso.", "Estadia"),
+                        "404": _response(
+                            "Nenhuma estadia ativa para essa cama.", "ErrorResponse"
                         ),
-                    }
+                    },
+                    with_bad_request=True,
+                ),
+            }
+        },
+        "/vagas": {
+            "get": {
+                "tags": ["Vagas"],
+                "summary": "Lista estadias com filtros opcionais.",
+                "description": (
+                    "Informe ao menos 'pessoa_id' ou 'abrigo_id'. "
+                    "Use 'apenas_ativas=true' para ver só quem está acolhido agora."
+                ),
+                "parameters": [
+                    _query_param("pessoa_id", "Filtra pelo histórico de uma pessoa."),
+                    _query_param("abrigo_id", "Filtra pelas estadias de um abrigo."),
+                    _query_param(
+                        "apenas_ativas",
+                        "Se 'true', retorna apenas estadias sem data de saída.",
+                        enum=["true", "false"],
+                    ),
+                ],
+                "responses": _default_responses(
+                    success={
+                        "200": _array_response(
+                            "Lista de estadias retornada com sucesso.", "Estadia"
+                        )
+                    },
+                    with_bad_request=True,
                 ),
             }
         },

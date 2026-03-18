@@ -1,22 +1,25 @@
 """
-Controller: Abrigo + Vaga
-==========================
-
-Gerencia o fluxo de acolhimento em tempo real.
+Controller: Abrigo + Estadia + VagaCama
+=========================================
 
 REGRA DE NEGÓCIO:
-- Entrada num abrigo NÃO requer prontuário, mas requer pessoa cadastrada.
+- Entrada/saída NÃO requer prontuário, mas requer pessoa cadastrada.
 - Consentimento NÃO é verificado aqui. Jamais.
 
+MUDANÇAS em relação à versão anterior (tabela `vaga`):
+- POST /vagas/entrada   → agora chama EstadiaModel.registrar_entrada()
+- PUT  /vagas/:id/saida → agora chama EstadiaModel.registrar_saida(pessoa_id)
+                          o identificador passou de vaga_id para pessoa_id,
+                          pois a PK de estadia é (pessoa_id, data_entrada_pk)
+- GET  /vagas           → agora aceita filtros por pessoa_id ou abrigo_id
+- GET  /abrigos/:id/camas → novo endpoint para ver o status das camas de um abrigo
+
 DÉBITO TÉCNICO:
-- As operações de entrada/saída deveriam ser atômicas (transação).
-  Hoje são duas queries em sequência. Implementar suporte a transações
-  no Database.query() para resolver isso.
-- DELETE /abrigos/:id (desativar) ainda não implementado.
+- Múltiplas queries em sequência sem transação atômica.
 """
 
 from flask import Blueprint, request, jsonify
-from app.models.abrigo import AbrigoModel, VagaModel
+from app.models.abrigo import AbrigoModel, EstadiaModel, VagaCamaModel
 
 # ─── Blueprint: Abrigo ────────────────────────────────────────────────────────
 abrigos_bp = Blueprint("abrigos", __name__, url_prefix="/abrigos")
@@ -27,7 +30,7 @@ def criar_abrigo():
     """
     POST /abrigos
 
-    Cadastra um novo abrigo com capacidade total e endereço.
+    Cadastra um novo abrigo e cria automaticamente todas as camas em vaga_cama.
 
     Body JSON:
         nome             (str, obrigatório)
@@ -82,7 +85,31 @@ def listar_abrigos():
     return jsonify(abrigos), 200
 
 
-# ─── Blueprint: Vaga ──────────────────────────────────────────────────────────
+@abrigos_bp.route("/<int:abrigo_id>/camas", methods=["GET"])
+def listar_camas(abrigo_id: int):
+    """
+    GET /abrigos/:id/camas
+
+    Lista todas as camas de um abrigo com seus status ('livre' ou 'ocupada').
+    Útil para visualizar a ocupação detalhada de um abrigo específico.
+
+    Parâmetro de rota:
+        abrigo_id (int): ID do abrigo.
+
+    Retorna:
+        200 + lista de camas com número e status
+    """
+    try:
+        camas = VagaCamaModel.listar_por_abrigo(abrigo_id)
+    except Exception as err:
+        return jsonify(
+            {"erro": "Erro interno ao listar camas.", "detalhes": str(err)}
+        ), 500
+
+    return jsonify(camas), 200
+
+
+# ─── Blueprint: Vagas (Estadia) ───────────────────────────────────────────────
 vagas_bp = Blueprint("vagas", __name__, url_prefix="/vagas")
 
 
@@ -91,17 +118,16 @@ def registrar_entrada():
     """
     POST /vagas/entrada
 
-    Registra a entrada de uma pessoa em um abrigo (US08).
-    Cria o registro de ocupação e decrementa o contador de vagas.
+    Registra a entrada de uma pessoa em um abrigo, alocando uma cama (US08).
 
     Body JSON:
-        pessoa_id (int, obrigatório)
+        pessoa_id (int, obrigatório) — ID da pessoa_rua
         abrigo_id (int, obrigatório)
 
     Retorna:
-        201 + registro da vaga
+        201 + estadia criada (com numero_cama alocada)
         400 se campos faltarem
-        409 se não houver vagas disponíveis ou pessoa já estiver acolhida
+        409 se pessoa já estiver acolhida ou abrigo sem camas livres
     """
     dados = request.get_json(silent=True)
     if not dados:
@@ -116,56 +142,107 @@ def registrar_entrada():
         ), 400
 
     try:
-        vaga = VagaModel.registrar_entrada(int(pessoa_id), int(abrigo_id))
+        estadia = EstadiaModel.registrar_entrada(int(pessoa_id), int(abrigo_id))
     except ValueError as err:
         # Pessoa já acolhida
         return jsonify({"erro": str(err)}), 409
     except RuntimeError as err:
-        # Abrigo sem vagas
+        # Sem camas livres
         return jsonify({"erro": str(err)}), 409
     except Exception as err:
         return jsonify(
             {"erro": "Erro interno ao registrar entrada.", "detalhes": str(err)}
         ), 500
 
-    return jsonify(vaga), 201
+    return jsonify(estadia), 201
 
 
-@vagas_bp.route("/<int:vaga_id>/saida", methods=["PUT"])
-def registrar_saida(vaga_id: int):
+@vagas_bp.route("/saida", methods=["PUT"])
+def registrar_saida():
     """
-    PUT /vagas/:id/saida
+    PUT /vagas/saida
 
-    Registra a saída de uma pessoa do abrigo (US09).
-    Libera a vaga e incrementa o contador do abrigo.
+    Registra a saída de uma pessoa pelo número da cama e abrigo (US09).
+    Libera a cama e incrementa o contador de vagas do abrigo.
 
-    Parâmetro de rota:
-        vaga_id (int): ID do registro de ocupação.
+    Body JSON:
+        numero_cama  (int, obrigatório)
+        abrigo_id    (int, obrigatório)
+        motivo_saida (str, opcional)
 
     Retorna:
-        200 + vaga atualizada (status='liberada')
-        404 se a vaga não existir
-        409 se a saída já tiver sido registrada
+        200 + estadia encerrada (com data_saida e motivo_saida preenchidos)
+        400 se campos obrigatórios faltarem
+        404 se a cama não tiver estadia ativa
     """
-    # Busca antes de tentar atualizar para diferenciar 404 de 409
-    from app.models.abrigo import VagaModel as VM
+    dados = request.get_json(silent=True)
+    if not dados:
+        return jsonify({"erro": "Body JSON inválido ou ausente."}), 400
 
-    vaga_atual = VM._buscar_por_id(vaga_id)
+    numero_cama = dados.get("numero_cama")
+    abrigo_id = dados.get("abrigo_id")
+    motivo_saida = dados.get("motivo_saida")
 
-    if not vaga_atual:
-        return jsonify({"erro": "Vaga não encontrada."}), 404
-
-    if vaga_atual["status"] == "liberada":
-        return jsonify({"erro": "A saída desta vaga já foi registrada."}), 409
+    if not numero_cama or not abrigo_id:
+        return jsonify(
+            {"erro": "Os campos 'numero_cama' e 'abrigo_id' são obrigatórios."}
+        ), 400
 
     try:
-        vaga = VagaModel.registrar_saida(vaga_id)
+        estadia = EstadiaModel.registrar_saida_por_cama(
+            int(numero_cama), int(abrigo_id), motivo_saida
+        )
     except Exception as err:
         return jsonify(
             {"erro": "Erro interno ao registrar saída.", "detalhes": str(err)}
         ), 500
 
-    if not vaga:
-        return jsonify({"erro": "Não foi possível registrar a saída."}), 500
+    if not estadia:
+        return jsonify(
+            {"erro": "Nenhuma estadia ativa encontrada para essa cama."}
+        ), 404
 
-    return jsonify(vaga), 200
+    return jsonify(estadia), 200
+
+
+@vagas_bp.route("", methods=["GET"])
+def listar_estadias():
+    """
+    GET /vagas
+    GET /vagas?pessoa_id=X
+    GET /vagas?abrigo_id=X
+    GET /vagas?abrigo_id=X&apenas_ativas=true
+
+    Lista estadias com filtros opcionais.
+
+    Query params:
+        pessoa_id    (int): Filtra pelo histórico de uma pessoa específica.
+        abrigo_id    (int): Filtra pelas estadias de um abrigo específico.
+        apenas_ativas (str): 'true' para retornar só quem está acolhido agora.
+
+    Retorna:
+        200 + lista de estadias
+        400 se nenhum filtro for enviado
+    """
+    pessoa_id = request.args.get("pessoa_id", type=int)
+    abrigo_id = request.args.get("abrigo_id", type=int)
+    apenas_ativas = request.args.get("apenas_ativas", "").lower() == "true"
+
+    if not pessoa_id and not abrigo_id:
+        return jsonify(
+            {"erro": "Informe ao menos 'pessoa_id' ou 'abrigo_id' como filtro."}
+        ), 400
+
+    try:
+        if pessoa_id:
+            resultado = EstadiaModel.listar_por_pessoa(pessoa_id)
+        else:
+            resultado = EstadiaModel.listar_por_abrigo(
+                abrigo_id, apenas_ativas=apenas_ativas
+            )
+    except Exception as err:
+        return jsonify(
+            {"erro": "Erro interno ao listar estadias.", "detalhes": str(err)}
+        ), 500
+
+    return jsonify(resultado), 200
