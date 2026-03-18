@@ -31,6 +31,7 @@ DROP TABLE IF EXISTS consentimento;
 DROP TABLE IF EXISTS pessoa_rua;
 DROP TABLE IF EXISTS profissional;
 DROP TABLE IF EXISTS historico_gestao;
+DROP TABLE IF EXISTS pessoa;
 
 -- Reativa checagem de FK
 SET FOREIGN_KEY_CHECKS = 1;
