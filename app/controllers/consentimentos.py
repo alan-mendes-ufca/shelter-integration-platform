@@ -34,7 +34,7 @@ def registrar_consentimento():
 
     Body JSON esperado:
         {
-            "pessoa_id": 42,              (obrigatório)
+            "pessoa_id": 1,              (obrigatório)
             "observacao": "Explicado..." (opcional)
         }
 
@@ -47,8 +47,42 @@ def registrar_consentimento():
                        Use ConsentimentoModel.buscar_ativo_por_pessoa(pessoa_id).
                        Se retornar algo, devolva 409 com mensagem clara.
     """
-    # TODO: Implementar
-    return jsonify({"erro": "Endpoint não implementado."}), 501
+    dados = request.get_json(silent=True)
+    if not dados:
+        return jsonify({"erro": "Body JSON inválido ou ausente."}), 400
+    pessoa_id = dados.get("pessoa_id")
+    if not pessoa_id:
+        return jsonify({"erro": "O campo 'pessoa_id' é obrigatório."}), 400
+
+    try:
+        consentimento_ativo = ConsentimentoModel.buscar_ativo_por_pessoa(pessoa_id)
+        if consentimento_ativo:
+            return jsonify(
+                {"erro": "Conflito: Já existe um consentimento ativo para esta pessoa."}
+            ), 409
+
+        consentimento_existente = ConsentimentoModel.buscar_por_pessoa(pessoa_id)
+
+        if consentimento_existente:
+            resultado = ConsentimentoModel.reativar_consentimento(
+                pessoa_id=pessoa_id, observacao=dados.get("observacao")
+            )
+        else:
+            resultado = ConsentimentoModel.criar(dados)
+
+        # 5. Sucesso absoluto
+        return jsonify(resultado), 201
+
+    except ValueError as err:
+        return jsonify({"erro": str(err)}), 400
+
+    except Exception as err:
+        return jsonify(
+            {
+                "erro": "Erro interno no servidor ao processar o consentimento.",
+                "detalhes": str(err),
+            }
+        ), 500
 
 
 @consentimentos_bp.route("/<int:pessoa_id>", methods=["GET"])
@@ -67,13 +101,30 @@ def verificar_consentimento(pessoa_id: int):
         200 OK + { "ativo": false }                         se não tiver
         (não retorna 404 — a ausência de consentimento é um estado válido)
 
-    TODO (estagiário): Chame ConsentimentoModel.buscar_ativo_por_pessoa(pessoa_id).
+    (estagiário): Chame ConsentimentoModel.buscar_ativo_por_pessoa(pessoa_id).
                        Retorne sempre 200, mas com o campo "ativo" indicando o estado.
                        Quem chama esse endpoint precisa de uma resposta previsível,
                        não de erros inesperados.
     """
-    # TODO: Implementar
-    return jsonify({"erro": "Endpoint não implementado."}), 501
+
+    try:
+        consentimento_ativo = ConsentimentoModel.buscar_ativo_por_pessoa(pessoa_id)
+
+        if consentimento_ativo:
+            return jsonify({"status": "O consentimento está ativo. "}), 200
+
+        else:
+            return jsonify(
+                {"status": "Consentimento não está ativo ou não foi criado. "}
+            ), 200
+
+    except Exception as err:
+        return jsonify(
+            {
+                "erro": "Erro interno do servidor ao verificar o consentimento. ",
+                "detalhes": str(err),
+            }
+        ), 500
 
 
 @consentimentos_bp.route("/<int:consentimento_id>/revogar", methods=["PUT"])
@@ -101,31 +152,33 @@ def revogar_consentimento(consentimento_id: int):
         404 Not Found se o consentimento não existir
         409 Conflict se já estiver revogado
 
-    TODO (estagiário): Chame ConsentimentoModel.revogar(consentimento_id, observacao).
+    (estagiário): Chame ConsentimentoModel.revogar(consentimento_id, observacao).
                        Se retornar None, o consentimento não existia ou já estava revogado.
                        Diferencie os dois casos se conseguir (404 vs 409).
     """
-    # TODO: Implementar
-    return jsonify({"erro": "Endpoint não implementado."}), 501
+    dados = request.get_json(silent=True) or {}
+    observacao = dados.get("observacao")
+    try:
+        consentimento_atual = ConsentimentoModel.buscar_por_pessoa(consentimento_id)
 
+        if not consentimento_atual:
+            return jsonify({"erro": "Consentimento não encontrado."}), 404
 
-@consentimentos_bp.route("/historico/<int:pessoa_id>", methods=["GET"])
-def historico_consentimentos(pessoa_id: int):
-    """
-    GET /consentimentos/historico/:pessoa_id
+        if not consentimento_atual.get("ativo"):
+            return jsonify(
+                {"erro": "Conflito: Este consentimento já se encontra revogado."}
+            ), 409
 
-    Retorna o histórico completo de consentimentos e revogações de uma pessoa.
-    Essencial para auditoria e compliance com a LGPD.
+        consentimento_atualizado = ConsentimentoModel.revogar_consentimento(
+            pessoa_id=consentimento_id, observacao=observacao
+        )
 
-    Parâmetro de rota:
-        pessoa_id (int): ID da pessoa.
+        return jsonify(consentimento_atualizado), 200
 
-    Retorna:
-        200 OK + lista de consentimentos em ordem cronológica decrescente
-        (lista vazia se a pessoa nunca deu consentimento — isso é válido)
-
-    TODO (estagiário): Chame ConsentimentoModel.historico_por_pessoa(pessoa_id).
-                       Sempre retorne uma lista, mesmo vazia.
-    """
-    # TODO: Implementar
-    return jsonify({"erro": "Endpoint não implementado."}), 501
+    except Exception as err:
+        return jsonify(
+            {
+                "erro": "Erro interno do servidor ao revogar o consentimento.",
+                "detalhes": str(err),
+            }
+        ), 500

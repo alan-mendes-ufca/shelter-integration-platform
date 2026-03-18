@@ -1,21 +1,5 @@
-"""
-Model: Consentimento
-====================
-
-Estagiário, esse model implementa o guardião legal do sistema baseado na LGPD.
-
-Ponto crítico que você precisa gravar:
-- Consentimento NÃO é sobre se a pessoa pode ser atendida (isso é sempre sim).
-- Consentimento é sobre se os dados SENSÍVEIS dela podem ser registrados e vistos.
-- Sem consentimento → atendimento normal, mas sem prontuário.
-- Com consentimento → prontuário liberado para criação e acesso.
-- Consentimento revogado → prontuário existente vira read-only, dados sensíveis ocultos.
-
-Essa lógica de bloqueio é aplicada nos controllers, mas os dados que
-suportam ela (campo `ativo`, `revogado_em`) ficam aqui no model.
-"""
-
 from infra.database import Database  # noqa: F401 — usado nos TODOs abaixo
+from datetime import datetime, timedelta
 
 
 class ConsentimentoModel(Database):
@@ -25,103 +9,122 @@ class ConsentimentoModel(Database):
     Fluxo esperado:
         1. POST /consentimentos     → criar()       → ativo=True
         2. GET  /consentimentos/:id → buscar_ativo() → verifica se ainda é True
-        3. PUT  /consentimentos/:id/revogar → revogar() → ativo=False, revogado_em=NOW()
+        3. PUT  /consentimentos/:id/revogar → revogar() → ativo=FALSE, revogado_em=NOW()
     """
 
     @classmethod
-    def criar(cls, pessoa_id: int, observacao: str = None) -> dict | None:
+    def criar(cls, dados: dict) -> dict | None:
         """
         Registra o consentimento formal de uma pessoa para tratamento de dados.
 
-        Ao criar um consentimento, o prontuário social dessa pessoa pode
-        ser criado e acessado (US02).
+        Campos principais da tabela:
+        - pessoa_id  (aponta para pessoa_rua_id)
+        - data_assinatura DATETIME,
+        - ativo
+        - validade
 
-        Args:
-            pessoa_id (int): ID da pessoa que está dando consentimento.
-            observacao (str, optional): Contexto ou observação do momento do consentimento.
-
-        Returns:
-            dict | None: Registro do consentimento criado.
-
-        TODO (estagiário): Antes de inserir, verifique se já existe um consentimento
-                           ATIVO para essa pessoa. Não faz sentido ter dois ativos
-                           ao mesmo tempo. Se existir, retorne o existente ou lance
-                           um erro com mensagem clara. Combine isso com o controller.
         """
-        # TODO: Implementar
-        raise NotImplementedError(
-            "ConsentimentoModel.criar() ainda não foi implementado."
-        )
+        #  Implementar
+        observacao = dados.get("observacao")
+        pessoa_id = dados.get("pessoa_id")
+
+        if not pessoa_id:
+            raise ValueError(
+                "O ID da pessoa é obrigatório para registrar o consentimento"
+            )
+
+        data_atual = datetime.now()
+        data_validade = data_atual + timedelta(days=365)
+
+        query_insert = """
+            INSERT INTO consentimento (pessoa_id, ativo, validade, observacao, data_assinatura)
+            VALUES (%s, True, %s, %s, CURRENT_TIMESTAMP)
+        """
+
+        params_insert = (pessoa_id, data_validade, observacao)
+        cls.query(query_insert, params_insert)
+
+        return cls.buscar_ativo_por_pessoa(pessoa_id)
 
     @classmethod
     def buscar_ativo_por_pessoa(cls, pessoa_id: int) -> dict | None:
-        """
-        Verifica se existe consentimento ATIVO para a pessoa informada.
+        query = "SELECT * FROM consentimento where pessoa_id = %s AND ativo is True  AND validade > NOW()"
+        params = (pessoa_id,)
 
-        Esse método é chamado automaticamente pelo ProntuarioModel antes
-        de qualquer exibição ou edição de dados sensíveis.
+        rows = cls.query(query, params)
 
-        Args:
-            pessoa_id (int): ID da pessoa.
+        if rows:
+            return rows[0]
 
-        Returns:
-            dict | None: Consentimento ativo ou None se não existir/revogado.
-
-        TODO (estagiário): SELECT com WHERE pessoa_id = %s AND ativo = TRUE.
-                           Retorne result[0] se encontrar, None se a lista vier vazia.
-        """
-        # TODO: Implementar
-        raise NotImplementedError(
-            "ConsentimentoModel.buscar_ativo_por_pessoa() ainda não foi implementado."
-        )
+        else:
+            return None
 
     @classmethod
-    def revogar(cls, consentimento_id: int, observacao: str = None) -> dict | None:
+    def revogar_consentimento(
+        cls, pessoa_id: int, observacao: str = None
+    ) -> dict | None:
         """
-        Registra a revogação do consentimento (US03).
-
-        Consequências da revogação (gerenciadas nos controllers):
-        - O prontuário existente passa a ser somente leitura.
-        - Dados sensíveis ficam ocultos nas respostas da API.
-        - Novos atendimentos simples continuam sendo possíveis.
-
-        Args:
-            consentimento_id (int): ID do consentimento a ser revogado.
-            observacao (str, optional): Motivo ou contexto da revogação.
-
-        Returns:
-            dict | None: Consentimento atualizado (agora com ativo=False).
-
-        TODO (estagiário): UPDATE consentimento SET ativo=FALSE, revogado_em=NOW(),
-                           observacao=%s WHERE id=%s AND ativo=TRUE.
-                           Se nenhuma linha for afetada (rowcount=0), significa que
-                           o consentimento já estava revogado ou não existe.
-                           Trate esse caso no controller retornando 404 ou 409.
+        O botão de emergência da LGPD.
+        Muda o ativo para False imediatamente, independente da validade.
         """
-        # TODO: Implementar
-        raise NotImplementedError(
-            "ConsentimentoModel.revogar() ainda não foi implementado."
-        )
+        # A query atualiza a linha específica daquela pessoa
+        query_update = """
+            UPDATE consentimento 
+            SET ativo = False, observacao = %s 
+            WHERE pessoa_id = %s
+        """
+
+        params_update = (observacao, pessoa_id)
+
+        cls.query(query_update, params_update)
+
+        query_select = "SELECT * FROM consentimento WHERE pessoa_id = %s"
+        rows = cls.query(query_select, (pessoa_id,))
+
+        if rows:
+            return rows[0]
+        return None
 
     @classmethod
-    def historico_por_pessoa(cls, pessoa_id: int) -> list[dict]:
+    def reativar_consentimento(
+        cls, pessoa_id: int, observacao: str = None
+    ) -> dict | None:
         """
-        Retorna o histórico COMPLETO de consentimentos e revogações de uma pessoa.
-
-        Usado para auditoria e compliance com a LGPD. Todo evento de
-        consentimento ou revogação deve ser rastreável.
-
-        Args:
-            pessoa_id (int): ID da pessoa.
-
-        Returns:
-            list[dict]: Lista de todos os registros de consentimento, em ordem
-                        cronológica decrescente (mais recente primeiro).
-
-        TODO (estagiário): SELECT * FROM consentimento WHERE pessoa_id = %s
-                           ORDER BY registrado_em DESC.
+        O botão de emergência da LGPD.
+        Muda o ativo para True imediatamente.
         """
-        # TODO: Implementar
-        raise NotImplementedError(
-            "ConsentimentoModel.historico_por_pessoa() ainda não foi implementado."
-        )
+        data_atual = datetime.now()
+        data_validade = data_atual + timedelta(days=365)
+        # A query atualiza a linha específica daquela pessoa
+        query_update = """
+            UPDATE consentimento 
+            SET ativo = True,
+                observacao = %s,
+                validade = %s,
+                data_assinatura = CURRENT_TIMESTAMP
+            WHERE pessoa_id = %s
+        """
+
+        params_update = (observacao, data_validade, pessoa_id)
+
+        cls.query(query_update, params_update)
+
+        query_select = "SELECT * FROM consentimento WHERE pessoa_id = %s"
+        rows = cls.query(query_select, (pessoa_id,))
+
+        if rows:
+            return rows[0]
+        return None
+
+    @classmethod
+    def buscar_por_pessoa(cls, pessoa_id: int) -> dict | None:
+        """
+        Busca o estado bruto do consentimento da pessoa, não importa se está ativo,
+        revogado ou vencido.
+        """
+        query = "SELECT * FROM consentimento WHERE pessoa_id = %s"
+        rows = cls.query(query, (pessoa_id,))
+
+        if rows:
+            return rows[0]
+        return None

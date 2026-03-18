@@ -219,8 +219,7 @@ SWAGGER_TEMPLATE = {
         "Consentimento": {
             "type": "object",
             "properties": {
-                "id": {"type": "integer", "example": 8},
-                "pessoa_id": {"type": "integer", "example": 42},
+                "pessoa_id": {"type": "integer", "example": 1},
                 "ativo": {"type": "boolean", "example": True},
                 "observacao": {
                     "type": "string",
@@ -232,7 +231,7 @@ SWAGGER_TEMPLATE = {
             "type": "object",
             "required": ["pessoa_id"],
             "properties": {
-                "pessoa_id": {"type": "integer", "example": 42},
+                "pessoa_id": {"type": "integer", "example": 1},
                 "observacao": {
                     "type": "string",
                     "example": "Pessoa concordou com o tratamento dos dados.",
@@ -767,20 +766,6 @@ SWAGGER_TEMPLATE = {
                 ),
             }
         },
-        "/consentimentos/historico/{pessoa_id}": {
-            "get": {
-                "tags": ["Consentimentos"],
-                "summary": "Lista o histórico de consentimentos de uma pessoa.",
-                "parameters": [_path_param("pessoa_id", "ID da pessoa consultada.")],
-                "responses": _default_responses(
-                    success={
-                        "200": _array_response(
-                            "Histórico encontrado com sucesso.", "Consentimento"
-                        )
-                    }
-                ),
-            }
-        },
         "/atendimentos": {
             "post": {
                 "tags": ["Atendimentos"],
@@ -961,14 +946,14 @@ SWAGGER_TEMPLATE = {
                 ),
             }
         },
-        "/prontuarios/{id_pessoa_rua}": {
+        "/prontuarios/{id}": {
             "get": {
                 "tags": ["Prontuários"],
                 "summary": "Retorna o prontuário integrado de uma pessoa.",
                 "description": "Busca o prontuário completo, incluindo os dados de vulnerabilidade da pessoa.",
                 "parameters": [
                     {
-                        "name": "id_pessoa_rua",
+                        "name": "id",
                         "in": "path",
                         "required": True,
                         "type": "integer",
@@ -988,7 +973,7 @@ SWAGGER_TEMPLATE = {
                 "description": "Atualiza o histórico, profissional, consentimento e o grau de vulnerabilidade simultaneamente.",
                 "parameters": [
                     {
-                        "name": "id_pessoa_rua",
+                        "name": "id",
                         "in": "path",
                         "required": True,
                         "type": "integer",
