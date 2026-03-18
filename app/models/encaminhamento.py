@@ -88,14 +88,14 @@ class EncaminhamentoModel(Database):
         return cls._buscar_por_id(encaminhamento_id)
 
     @classmethod
-    def listar_por_pessoa(cls, pessoa_id: int) -> list[dict]:
-        pessoa_id = cls._validar_inteiro_positivo(pessoa_id, "pessoa_id")
+    def listar_por_pessoa(cls, id_pessoa_rua: int) -> list[dict]:
+        id_pessoa_rua = cls._validar_inteiro_positivo(id_pessoa_rua, "id_pessoa_rua")
         sql = """
             SELECT e.* FROM encaminhamento e
             JOIN atendimento a ON e.id_atendimento_fk = a.id_atendimento
             WHERE a.id_pessoa_rua = %s
         """
-        return cls.query(sql, (pessoa_id,)) or []
+        return cls.query(sql, (id_pessoa_rua,)) or []
 
     @classmethod
     def listar_por_status(cls, status: str) -> list[dict]:
