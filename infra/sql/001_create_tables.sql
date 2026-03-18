@@ -10,14 +10,17 @@
 -- A ordem de criação importa muito por causa das FOREIGN KEYS.
 -- Nunca tente criar uma tabela que referencia outra que ainda não existe.
 -- A ordem correta é:
---   1. profissional       (independente)
---   2. pessoa_rua         (independente)
---   3. consentimento      (depende de pessoa_rua)
---   4. prontuario         (depende de pessoa_rua + consentimento)
---   5. atendimento        (depende de pessoa_rua + profissional)
---   6. abrigo             (independente)
---   7. vaga               (depende de pessoa_rua + abrigo)
---   8. encaminhamento     (depende de atendimento + prontuario)
+--   1. pessoa             (independente)
+--   2. profissional       (depende de pessoa)
+--   3. pessoa_rua         (independente)
+--   4. consentimento      (depende de pessoa_rua)
+--   5. prontuario         (depende de pessoa_rua + consentimento + profissional)
+--   6. atendimento        (depende de pessoa_rua + profissional)
+--   7. abrigo             (independente)
+--   8. vaga_cama          (depende de abrigo)         ← substitui vaga
+--   9. estadia            (depende de pessoa_rua + vaga_cama)
+--  10. encaminhamento     (depende de atendimento)
+--  11. historico_gestao   (depende de pessoa + abrigo)
 --
 -- Execute esse script UMA ÚNICA VEZ ao subir o ambiente pela primeira vez.
 -- Se precisar recriar, use o script 002_drop_tables.sql antes.
@@ -29,33 +32,30 @@
 -- =============================================================================
 -- TABELA: pessoa
 -- Representa os USUÁRIOS do sistema (profissionais e gestores).
--- Contém as informações básicas de autenticação e identificação utilizadas
--- para acesso à aplicação. Essa entidade funciona como base para a
--- especialização em papéis do sistema, como profissional e gestor,
--- permitindo rastreabilidade de ações (ex.: registro de atendimentos,
--- encaminhamentos e atualizações no sistema).
 -- Diferente de `pessoa_rua`, esta tabela NÃO representa pessoas atendidas,
 -- mas sim os operadores do sistema.
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS pessoa(
-    id_pessoa int  UNSIGNED AUTO_INCREMENT  PRIMARY KEY,
-    nome VARCHAR(120) NOT NULL,
-    senha VARCHAR(255) NOT NULL
-    );
+CREATE TABLE IF NOT EXISTS pessoa (
+    id_pessoa   INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
+    nome        VARCHAR(120)    NOT NULL,
+    senha       VARCHAR(255)    NOT NULL
+);
+
 -- =============================================================================
 -- TABELA: profissional
 -- Representa os assistentes sociais, educadores e demais profissionais
--- que operam o sistema. Todo atendimento e encaminhamento precisa ter
--- um profissional responsável para manter rastreabilidade.
+-- que operam o sistema. Todo atendimento precisa ter um profissional
+-- responsável para manter rastreabilidade.
 -- =============================================================================
-
 CREATE TABLE IF NOT EXISTS profissional (
-    id_profissional INT UNSIGNED AUTO_INCREMENT,
-    id_pessoa INT UNSIGNED NOT NULL,
-    cargo VARCHAR(100) NOT NULL,
-    registro_conselho VARCHAR(50),
-    PRIMARY KEY (id_profissional),
-    FOREIGN KEY (id_pessoa) REFERENCES pessoa(id_pessoa) ON DELETE CASCADE
+    id_profissional     INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
+    id_pessoa           INT UNSIGNED    NOT NULL,
+    cargo               VARCHAR(100)    NOT NULL,
+    registro_conselho   VARCHAR(50),
+
+    CONSTRAINT fk_profissional_pessoa
+        FOREIGN KEY (id_pessoa) REFERENCES pessoa(id_pessoa)
+        ON DELETE CASCADE
 );
 
 -- =============================================================================
@@ -64,14 +64,13 @@ CREATE TABLE IF NOT EXISTS profissional (
 -- Aceita cadastro provisório SEM documentos (apenas apelido + descrição fisica).
 -- Isso garante que nenhum atendimento seja bloqueado por burocracia (US01).
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS pessoa_rua(
-    id_pessoa_rua INT UNSIGNED AUTO_INCREMENT,
-    apelido VARCHAR(100) NOT NULL,
-    descricao_fisica VARCHAR(255) NOT NULL,
-    nome_civil VARCHAR(120),
-    cpf_opcional VARCHAR(11) UNIQUE,
-    nivel_risco ENUM('baixo','medio','alto','critico')  NOT NULL DEFAULT 'medio',
-    PRIMARY KEY (id_pessoa_rua)
+CREATE TABLE IF NOT EXISTS pessoa_rua (
+    id_pessoa_rua   INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
+    apelido         VARCHAR(100)    NOT NULL,
+    descricao_fisica VARCHAR(255)   NOT NULL,
+    nome_civil      VARCHAR(120),
+    cpf_opcional    VARCHAR(11)     UNIQUE,
+    nivel_risco     ENUM('baixo','medio','alto','critico') NOT NULL DEFAULT 'medio'
 );
 
 -- =============================================================================
@@ -82,17 +81,16 @@ CREATE TABLE IF NOT EXISTS pessoa_rua(
 -- Só bloqueia acesso ao prontuário (US02, US03).
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS consentimento (
+    id_consentimento    INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
+    pessoa_id           INT UNSIGNED    NOT NULL,
+    ativo               BOOLEAN         NOT NULL DEFAULT TRUE,
+    registrado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    revogado_em         DATETIME,
+    observacao          TEXT,
 
-    pessoa_id   INT UNSIGNED PRIMARY KEY,
-
-    data_assinatura DATETIME,
-    ativo           BOOLEAN   NOT NULL DEFAULT TRUE,   
-    validade        DATETIME,
-    observacao      TEXT,
-
-    CONSTRAINT fk_consentimento_pessoa_rua
+    CONSTRAINT fk_consentimento_pessoa
         FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id_pessoa_rua)
-        ON DELETE RESTRICT                             
+        ON DELETE RESTRICT
 );
 
 -- =============================================================================
@@ -103,13 +101,14 @@ CREATE TABLE IF NOT EXISTS consentimento (
 -- A lógica de bloqueio é feita na camada de aplicação (Python), não aqui.
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS prontuario (
-    id_prontuario INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, -- Adicionamos para o Membro 6
-    id_pessoa_rua INT UNSIGNED UNIQUE NOT NULL,            -- O UNIQUE garante a regra de 1:1
-    id_consentimento INT UNSIGNED NOT NULL,
-    id_profissional INT UNSIGNED NOT NULL,
-    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
-    resumo_historico TEXT,
-    FOREIGN KEY (id_pessoa_rua) REFERENCES pessoa_rua(id_pessoa_rua) ON DELETE CASCADE,
+    id_prontuario       INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
+    id_pessoa_rua       INT UNSIGNED    UNIQUE NOT NULL,
+    id_consentimento    INT UNSIGNED    NOT NULL,
+    id_profissional     INT UNSIGNED    NOT NULL,
+    data_criacao        DATETIME        DEFAULT CURRENT_TIMESTAMP,
+    resumo_historico    TEXT,
+
+    FOREIGN KEY (id_pessoa_rua)   REFERENCES pessoa_rua(id_pessoa_rua)   ON DELETE CASCADE,
     FOREIGN KEY (id_profissional) REFERENCES profissional(id_profissional)
     -- MOCK: Lembre-se de deixar comentado até o Membro 2 fazer a tabela dele
     -- FOREIGN KEY (id_consentimento) REFERENCES consentimento(id_consentimento)
@@ -123,15 +122,15 @@ CREATE TABLE IF NOT EXISTS prontuario (
 -- O atendimento_id é vínculo obrigatório para qualquer encaminhamento (US04).
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS atendimento (
-    id_atendimento      INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
-    pessoa_id           INT UNSIGNED    NOT NULL,
-    profissional_id     INT UNSIGNED    NOT NULL,
-    tipo                ENUM('escuta','alimentacao','banho','saude','juridico','outro') NOT NULL,
-    unidade             VARCHAR(150)    NOT NULL,            -- Nome/localização da unidade de atendimento
-    observacoes         TEXT,
-    realizado_em        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    criado_em           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    atualizado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    id_atendimento  INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
+    pessoa_id       INT UNSIGNED    NOT NULL,
+    profissional_id INT UNSIGNED    NOT NULL,
+    tipo            ENUM('escuta','alimentacao','banho','saude','juridico','outro') NOT NULL,
+    unidade         VARCHAR(150)    NOT NULL,
+    observacoes     TEXT,
+    realizado_em    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    criado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 
     -- CONSTRAINT fk_atendimento_pessoa
     --     FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id_pessoa_rua)
@@ -146,78 +145,75 @@ CREATE TABLE IF NOT EXISTS atendimento (
 -- TABELA: abrigo
 -- Cadastro dos abrigos disponíveis na rede de apoio.
 -- O campo `vagas_disponiveis` é gerenciado automaticamente pelo sistema
--- nos endpoints POST /vagas/entrada e PUT /vagas/:id/saida (US07, US08, US09).
+-- nos endpoints POST /vagas/entrada e PUT /vagas/:pessoa_id/saida (US07-US09).
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS abrigo (
     id_abrigo           INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     nome                VARCHAR(150)    NOT NULL,
     endereco            VARCHAR(255)    NOT NULL,
     capacidade_total    INT UNSIGNED    NOT NULL,
-    vagas_disponiveis   INT UNSIGNED    NOT NULL,           -- Decrementado/incrementado automaticamente
+    vagas_disponiveis   INT UNSIGNED    NOT NULL,
     telefone            VARCHAR(20),
     ativo               BOOLEAN         NOT NULL DEFAULT TRUE,
     criado_em           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    -- Garante que vagas_disponiveis nunca ultrapasse a capacidade
     CONSTRAINT chk_vagas CHECK (vagas_disponiveis <= capacidade_total)
 );
 
 -- =============================================================================
--- TABELA: vaga
--- Registra a ocupação de vagas em abrigos.
--- Uma vaga pertence a UMA pessoa e UM abrigo.
--- Status: 'ocupada' ou 'liberada'.
--- Não requer prontuário, mas requer pessoa cadastrada (US08, US09).
+-- TABELA: vaga_cama
+-- Inventário de camas numeradas por abrigo.
+-- Populada automaticamente quando um abrigo é cadastrado via AbrigoModel.criar().
+-- Cada cama tem número único dentro do seu abrigo e um status.
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS vaga (
-    id_vaga         INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
-    pessoa_id       INT UNSIGNED    NOT NULL,
-    abrigo_id       INT UNSIGNED    NOT NULL,
-    status          ENUM('ocupada','liberada') NOT NULL DEFAULT 'ocupada',
-    entrada_em      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    saida_em        DATETIME,                               -- Preenchido no PUT /vagas/:id/saida
+CREATE TABLE IF NOT EXISTS vaga_cama (
+    numero_cama_pk  INT UNSIGNED    NOT NULL,
+    id_abrigo_fk    INT UNSIGNED    NOT NULL,
+    status          ENUM('livre','ocupada') NOT NULL DEFAULT 'livre',
 
-    CONSTRAINT fk_vaga_pessoa
-        FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id_pessoa_rua)
-        ON DELETE RESTRICT,
+    PRIMARY KEY (numero_cama_pk, id_abrigo_fk),
 
-    CONSTRAINT fk_vaga_abrigo
-        FOREIGN KEY (abrigo_id) REFERENCES abrigo(id_abrigo)
-        ON DELETE RESTRICT
+    CONSTRAINT fk_vaga_cama_abrigo
+        FOREIGN KEY (id_abrigo_fk) REFERENCES abrigo(id_abrigo)
+        ON DELETE CASCADE
 );
+
 -- =============================================================================
 -- TABELA: estadia
--- Registra a estadia em vagas dos abrigos.
--- Uma estadia pertence a UMA pessoa em UMA vaga POR DIA.
+-- Registra a ocupação de uma cama específica por uma pessoa.
+-- Substitui a tabela `vaga` — agora controlamos cama individual + motivo de saída.
+-- Não requer prontuário, mas requer pessoa cadastrada (US08, US09).
 -- =============================================================================
-CREATE TABLE estadia (
-    id_pessoa_rua INT UNSIGNED NOT NULL,
-    data_entrada DATE NOT NULL,
-    id_abrigo INT UNSIGNED NOT NULL,
-    numero_cama INT NOT NULL,
-    data_saida DATE NULL,
-    motivo_saida VARCHAR(255) NULL,
-    
-    PRIMARY KEY (id_pessoa_rua, data_entrada),
-    
-    CONSTRAINT fk_estadia_pessoa FOREIGN KEY (id_pessoa_rua) 
-        REFERENCES pessoa_rua(id_pessoa_rua) ON DELETE CASCADE,
-        
-    CONSTRAINT fk_estadia_abrigo FOREIGN KEY (id_abrigo) 
-        REFERENCES abrigo(id_abrigo) ON DELETE CASCADE
+CREATE TABLE IF NOT EXISTS estadia (
+    id_pessoa_rua_fk    INT UNSIGNED    NOT NULL,
+    data_entrada_pk     DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    numero_cama_fk      INT UNSIGNED    NOT NULL,
+    id_abrigo_fk        INT UNSIGNED    NOT NULL,
+    data_saida          DATETIME,
+    motivo_saida        TEXT,
+
+    PRIMARY KEY (id_pessoa_rua_fk, data_entrada_pk),
+
+    CONSTRAINT fk_estadia_pessoa
+        FOREIGN KEY (id_pessoa_rua_fk) REFERENCES pessoa_rua(id_pessoa_rua)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_estadia_vaga_cama
+        FOREIGN KEY (numero_cama_fk, id_abrigo_fk) REFERENCES vaga_cama(numero_cama_pk, id_abrigo_fk)
+        ON DELETE RESTRICT
 );
+
 -- =============================================================================
 -- TABELA: encaminhamento
 -- Formaliza a ponte entre o sistema e a rede externa (CRAS, CREAS, UBS, etc.).
--- Ajustada para corresponder exatamente ao diagrama lógico.
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS encaminhamento (
     id_encaminhamento_pk    INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     id_atendimento_fk       INT UNSIGNED    NOT NULL,
     orgaoDestino            VARCHAR(200)    NOT NULL,
     motivo                  TEXT            NOT NULL,
-    prioridade              ENUM('baixa', 'media', 'alta') NOT NULL,
-    status_acompanhamento   ENUM('pendente', 'atendido', 'resolvido', 'cancelado') NOT NULL DEFAULT 'pendente',
+    prioridade              ENUM('baixa','media','alta') NOT NULL,
+    status_acompanhamento   ENUM('pendente','atendido','resolvido','cancelado') NOT NULL DEFAULT 'pendente',
 
     CONSTRAINT fk_encaminhamento_atendimento
         FOREIGN KEY (id_atendimento_fk) REFERENCES atendimento(id_atendimento)
@@ -229,15 +225,15 @@ CREATE TABLE IF NOT EXISTS encaminhamento (
 -- Registra quem comandou qual abrigo e em qual período.
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS historico_gestao (
-    id_gestor_fk      INT UNSIGNED    NOT NULL,
-    id_abrigo_fk      INT UNSIGNED    NOT NULL,
-    data_inicio_pk    DATETIME        NOT NULL,
-    data_fim          DATETIME,
+    id_gestor_fk    INT UNSIGNED    NOT NULL,
+    id_abrigo_fk    INT UNSIGNED    NOT NULL,
+    data_inicio_pk  DATETIME        NOT NULL,
+    data_fim        DATETIME,
 
     PRIMARY KEY (id_gestor_fk, id_abrigo_fk, data_inicio_pk),
 
     INDEX idx_hist_gestao_abrigo (id_abrigo_fk),
-    INDEX idx_hist_gestao_fim (data_fim),
+    INDEX idx_hist_gestao_fim    (data_fim),
 
     CONSTRAINT fk_hist_gestao_pessoa
         FOREIGN KEY (id_gestor_fk) REFERENCES pessoa(id_pessoa)
@@ -250,14 +246,14 @@ CREATE TABLE IF NOT EXISTS historico_gestao (
 
 -- =============================================================================
 -- ÍNDICES DE PERFORMANCE
--- Estagiário: índices aceleram buscas frequentes. Coloque-os nas colunas
--- que aparecem em WHERE, JOIN ou ORDER BY com frequência.
 -- =============================================================================
-CREATE INDEX idx_pessoa_apelido        ON pessoa_rua(apelido);
-CREATE INDEX idx_pessoa_cpf            ON pessoa_rua(cpf_opcional);
-CREATE INDEX idx_consentimento_pessoa  ON consentimento(pessoa_id);
-CREATE INDEX idx_atendimento_pessoa    ON atendimento(pessoa_id);
-CREATE INDEX idx_atendimento_unidade   ON atendimento(unidade);
-CREATE INDEX idx_atendimento_data      ON atendimento(realizado_em);
-CREATE INDEX idx_encaminhamento_status ON encaminhamento(status_acompanhamento);
-CREATE INDEX idx_vaga_status           ON vaga(status);
+CREATE INDEX idx_pessoa_apelido         ON pessoa_rua(apelido);
+CREATE INDEX idx_pessoa_cpf             ON pessoa_rua(cpf_opcional);
+CREATE INDEX idx_consentimento_pessoa   ON consentimento(pessoa_id);
+CREATE INDEX idx_atendimento_pessoa     ON atendimento(pessoa_id);
+CREATE INDEX idx_atendimento_unidade    ON atendimento(unidade);
+CREATE INDEX idx_atendimento_data       ON atendimento(realizado_em);
+CREATE INDEX idx_encaminhamento_status  ON encaminhamento(status_acompanhamento);
+CREATE INDEX idx_vaga_cama_status       ON vaga_cama(status);
+CREATE INDEX idx_estadia_abrigo         ON estadia(id_abrigo_fk);
+CREATE INDEX idx_estadia_saida          ON estadia(data_saida);
