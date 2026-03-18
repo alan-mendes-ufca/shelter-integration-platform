@@ -1,21 +1,19 @@
 """
-Controller: Pessoa em Situação de Rua
+Controller: Pessoa
 
 Este arquivo reúne os endpoints HTTP responsáveis pelo ciclo básico de gestão
-de pessoas em situação de rua no sistema.
+de pessoas usuárias do sistema.
 
 Escopo do controller:
-- criar cadastro provisório;
+- criar cadastro;
 - consultar por ID;
-- buscar por apelido;
 - atualizar dados cadastrais;
-- atualizar nível de risco;
-- listar com filtros opcionais.
+- listar pessoas cadastradas.
 
 Responsabilidade desta camada:
 - interpretar requisições HTTP (path, query e body);
 - validar entradas básicas de requisição;
-- chamar o `PessoaRuaModel` para acesso a dados;
+- chamar o `PessoaModel` para acesso a dados;
 - retornar respostas HTTP padronizadas com status adequados.
 
 Regras gerais de retorno:
@@ -34,13 +32,13 @@ from flask import Blueprint, jsonify, request  # noqa: F401
 
 from app.models.pessoa_rua import PessoaRuaModel  # noqa: F401
 
-pessoas_bp = Blueprint("pessoas", __name__, url_prefix="/pessoas")
+pessoarua_bp = Blueprint("pessoarua", __name__)
 
 # Valores aceitos para o campo nivel_risco — definidos pelo ENUM no banco
 NIVEIS_RISCO_VALIDOS = {"baixo", "medio", "alto", "critico"}
 
 
-@pessoas_bp.route("", methods=["POST"])
+@pessoarua_bp.route("", methods=["POST"])
 def criar_pessoa():
     dados = request.get_json(silent=True)
     if not dados:
@@ -61,7 +59,7 @@ def criar_pessoa():
     return jsonify(pessoa), 201
 
 
-@pessoas_bp.route("/<int:pessoa_id>", methods=["GET"])
+@pessoarua_bp.route("/<int:pessoa_id>", methods=["GET"])
 def buscar_por_id(pessoa_id: int):
     try:
         pessoa = PessoaRuaModel.buscar_por_id(pessoa_id)
@@ -75,7 +73,7 @@ def buscar_por_id(pessoa_id: int):
     return jsonify(pessoa), 200
 
 
-@pessoas_bp.route("", methods=["GET"])
+@pessoarua_bp.route("", methods=["GET"])
 def buscar_por_apelido():
     apelido = request.args.get("apelido", "").strip()
     if not apelido:
@@ -89,7 +87,7 @@ def buscar_por_apelido():
     return jsonify(pessoa), 200
 
 
-@pessoas_bp.route("/<int:pessoa_id>", methods=["PUT"])
+@pessoarua_bp.route("/<int:pessoa_id>", methods=["PUT"])
 def atualizar_pessoa(pessoa_id: int):
     dados = request.get_json(silent=True)
     if not dados:
@@ -113,7 +111,7 @@ def atualizar_pessoa(pessoa_id: int):
     return jsonify(pessoa), 200
 
 
-@pessoas_bp.route("/<int:pessoa_id>/risco", methods=["PUT"])
+@pessoarua_bp.route("/<int:pessoa_id>/risco", methods=["PUT"])
 def atualizar_risco(pessoa_id: int):
     dados = request.get_json(silent=True)
     if not dados:
@@ -147,7 +145,7 @@ def atualizar_risco(pessoa_id: int):
     return jsonify(pessoa), 200
 
 
-@pessoas_bp.route("/filtros", methods=["GET"])
+@pessoarua_bp.route("/filtros", methods=["GET"])
 def listar_pessoas_com_filtros():
     apelido = request.args.get("apelido")
     nome_civil = request.args.get("nome_civil")

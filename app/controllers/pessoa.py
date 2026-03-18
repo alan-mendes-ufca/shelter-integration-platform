@@ -1,30 +1,31 @@
 """
-Service: Pessoa
+Controller: Pessoa
 
-Este arquivo reúne as operações de serviço responsáveis pelo ciclo básico de
-gestão de pessoas usuárias do sistema.
+Este arquivo reúne os endpoints HTTP responsáveis pelo ciclo básico de gestão
+de pessoas usuárias do sistema.
 
-Escopo do service:
+Escopo do controller:
 - criar cadastro;
 - consultar por ID;
 - atualizar dados cadastrais;
-- listar pessoas.
+- listar pessoas cadastradas.
 
 Responsabilidade desta camada:
-- centralizar regras de negócio da entidade pessoa;
-- validar entradas de domínio antes de chamar o model;
-- orquestrar chamadas ao `PessoaModel`;
-- padronizar mensagens de erro para o controller.
+- interpretar requisições HTTP (path, query e body);
+- validar entradas básicas de requisição;
+- chamar o `PessoaModel` para acesso a dados;
+- retornar respostas HTTP padronizadas com status adequados.
 
-Regras gerais:
-- o service não retorna status HTTP;
-- erros de validação devem gerar `ValueError`;
-- ausência de recurso pode retornar `None` (ou `LookupError`, se adotado no projeto);
-- falhas inesperadas devem propagar exceções para tratamento no controller.
+Regras gerais de retorno:
+- 200 para consultas/atualizações bem-sucedidas;
+- 201 para criação;
+- 400 para erro de entrada/validação;
+- 404 quando o recurso não existir;
+- 500 para falhas inesperadas.
 
 Observação:
-A persistência e execução de SQL ficam no model.
-O service atua como camada intermediária entre controller e model.
+As regras de persistência e validações de domínio ligadas ao banco devem ficar
+no model. O controller atua como camada de orquestração HTTP.
 """
 
 from flask import Blueprint, jsonify, request  # noqa: F401
