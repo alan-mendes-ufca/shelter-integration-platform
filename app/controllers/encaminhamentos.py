@@ -6,6 +6,7 @@ encaminhamentos_bp = Blueprint("encaminhamentos", __name__)
 STATUS_VALIDOS = {"pendente", "atendido", "resolvido", "cancelado"}
 
 
+# 1. CRIAR ENCAMINHAMENTO (POST)
 @encaminhamentos_bp.route("", methods=["POST"])
 def criar_encaminhamento():
     """
@@ -80,6 +81,7 @@ def listar_encaminhamentos_pessoa(id_pessoa_rua: int):
         return jsonify({"erro": f"Erro ao buscar histórico: {str(e)}"}), 500
 
 
+# 3. LISTAR POR STATUS (GET com Query Param)
 @encaminhamentos_bp.route("", methods=["GET"])
 def listar_por_status():
     """
@@ -111,6 +113,7 @@ def listar_por_status():
         return jsonify({"erro": f"Erro ao filtrar status: {str(e)}"}), 500
 
 
+# 4. ATUALIZAR STATUS (PUT)
 @encaminhamentos_bp.route("/<int:encaminhamento_id>/status", methods=["PUT"])
 def atualizar_status(encaminhamento_id: int):
     """
@@ -148,6 +151,7 @@ def atualizar_status(encaminhamento_id: int):
 
     try:
         if novo_status == "cancelado":
+            # Passe a variável renomeada para o Model
             EncaminhamentoModel.cancelar(encaminhamento_id)
         else:
             EncaminhamentoModel.atualizar_status(encaminhamento_id, novo_status)
@@ -157,6 +161,7 @@ def atualizar_status(encaminhamento_id: int):
         return jsonify({"erro": f"Erro ao atualizar: {str(e)}"}), 500
 
 
+# 5. CANCELAR ENCAMINHAMENTO (DELETE)
 @encaminhamentos_bp.route("/<int:encaminhamento_id>", methods=["DELETE"])
 def cancelar_encaminhamento(encaminhamento_id: int):
     """

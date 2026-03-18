@@ -21,6 +21,7 @@
 -- Desativa checagem de FK temporariamente para facilitar o drop em massa
 SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS estadia;
 DROP TABLE IF EXISTS encaminhamento;
 DROP TABLE IF EXISTS vaga;
 DROP TABLE IF EXISTS abrigo;

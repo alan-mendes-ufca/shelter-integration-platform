@@ -219,8 +219,7 @@ SWAGGER_TEMPLATE = {
         "Consentimento": {
             "type": "object",
             "properties": {
-                "id": {"type": "integer", "example": 8},
-                "pessoa_id": {"type": "integer", "example": 42},
+                "pessoa_id": {"type": "integer", "example": 1},
                 "ativo": {"type": "boolean", "example": True},
                 "observacao": {
                     "type": "string",
@@ -232,7 +231,7 @@ SWAGGER_TEMPLATE = {
             "type": "object",
             "required": ["pessoa_id"],
             "properties": {
-                "pessoa_id": {"type": "integer", "example": 42},
+                "pessoa_id": {"type": "integer", "example": 1},
                 "observacao": {
                     "type": "string",
                     "example": "Pessoa concordou com o tratamento dos dados.",
@@ -327,57 +326,64 @@ SWAGGER_TEMPLATE = {
         "Profissional": {
             "type": "object",
             "properties": {
-                "id": {"type": "integer", "example": 7},
+                "id_profissional": {"type": "integer", "example": 1},
+                "id_pessoa": {"type": "integer", "example": 1},
                 "nome": {"type": "string", "example": "Maria Souza"},
-                "cargo": {"type": "string", "example": "Assistente Social"},
-                "email": {
-                    "type": "string",
-                    "format": "email",
-                    "example": "maria@creas.gov.br",
-                },
-                "registro": {"type": "string", "example": "CRESS-SP 12345"},
+                "cargo": {"type": "string", "example": "assistente_social"},
+                "registro_conselho": {"type": "string", "example": "CRESS-SP 12345"},
             },
         },
         "ProfissionalCreateInput": {
             "type": "object",
-            "required": ["nome", "cargo", "email"],
+            "required": ["id_pessoa", "cargo"],
             "properties": {
-                "nome": {"type": "string"},
-                "cargo": {"type": "string"},
-                "email": {"type": "string", "format": "email"},
-                "registro": {"type": "string"},
+                "id_pessoa": {"type": "integer", "example": 1},
+                "cargo": {"type": "string", "example": "assistente_social"},
+                "registro_conselho": {"type": "string", "example": "CRESS-SP 12345"},
             },
         },
         "Prontuario": {
             "type": "object",
             "properties": {
-                "id": {"type": "integer", "example": 11},
-                "pessoa_id": {"type": "integer", "example": 42},
-                "consentimento_id": {"type": "integer", "example": 8},
-                "diagnostico_social": {
+                "id_pessoa_rua": {"type": "integer", "example": 1},
+                "id_consentimento": {"type": "integer", "example": 1},
+                "id_profissional": {"type": "integer", "example": 1},
+                "data_criacao": {"type": "string", "example": "2026-03-17 23:54:00"},
+                "resumo_historico": {
                     "type": "string",
-                    "example": "Situação de alta vulnerabilidade.",
+                    "example": "Primeiro atendimento realizado. O indivíduo aceitou o acolhimento.",
                 },
-                "observacoes": {
-                    "type": "string",
-                    "example": "Primeiro contato em abordagem social.",
-                },
+                "apelido": {"type": "string", "example": "João do Chapéu"},
+                "grau_vulnerabilidade": {"type": "string", "example": "alto"},
             },
         },
         "ProntuarioCreateInput": {
             "type": "object",
-            "required": ["pessoa_id"],
+            "required": ["id_pessoa_rua", "id_consentimento", "id_profissional"],
             "properties": {
-                "pessoa_id": {"type": "integer", "example": 42},
-                "diagnostico_social": {"type": "string"},
-                "observacoes": {"type": "string"},
+                "id_pessoa_rua": {"type": "integer", "example": 1},
+                "id_consentimento": {"type": "integer", "example": 1},
+                "id_profissional": {"type": "integer", "example": 1},
+                "resumo_historico": {
+                    "type": "string",
+                    "example": "Primeiro atendimento realizado.",
+                },
             },
         },
         "ProntuarioUpdateInput": {
             "type": "object",
             "properties": {
-                "diagnostico_social": {"type": "string"},
-                "observacoes": {"type": "string"},
+                "resumo_historico": {
+                    "type": "string",
+                    "example": "Paciente apresentou melhora no quadro.",
+                },
+                "id_profissional": {"type": "integer", "example": 2},
+                "id_consentimento": {"type": "integer", "example": 1},
+                "grau_vulnerabilidade": {
+                    "type": "string",
+                    "enum": ["baixo", "medio", "alto", "critico"],
+                    "example": "baixo",
+                },
             },
         },
         "Abrigo": {
@@ -695,20 +701,6 @@ SWAGGER_TEMPLATE = {
                 ),
             }
         },
-        "/consentimentos/historico/{pessoa_id}": {
-            "get": {
-                "tags": ["Consentimentos"],
-                "summary": "Lista o histórico de consentimentos de uma pessoa.",
-                "parameters": [_path_param("pessoa_id", "ID da pessoa consultada.")],
-                "responses": _default_responses(
-                    success={
-                        "200": _array_response(
-                            "Histórico encontrado com sucesso.", "Consentimento"
-                        )
-                    }
-                ),
-            }
-        },
         "/atendimentos": {
             "post": {
                 "tags": ["Atendimentos"],
@@ -889,14 +881,14 @@ SWAGGER_TEMPLATE = {
                 ),
             }
         },
-        "/prontuarios/{id}": {
+        "/prontuarios/{id_pessoa_rua}": {
             "get": {
                 "tags": ["Prontuários"],
                 "summary": "Retorna o prontuário integrado de uma pessoa.",
-                "description": "Nesta operação, o parâmetro `id` representa o `pessoa_id`.",
+                "description": "Busca o prontuário completo, incluindo os dados de vulnerabilidade da pessoa.",
                 "parameters": [
                     {
-                        "name": "id",
+                        "name": "id_pessoa_rua",
                         "in": "path",
                         "required": True,
                         "type": "integer",
@@ -906,9 +898,6 @@ SWAGGER_TEMPLATE = {
                 "responses": _default_responses(
                     success={
                         "200": _response("Prontuário encontrado.", "Prontuario"),
-                        "403": _response(
-                            "Pessoa sem consentimento ativo.", "ErrorResponse"
-                        ),
                         "404": _response("Prontuário não encontrado.", "ErrorResponse"),
                     }
                 ),
@@ -916,14 +905,14 @@ SWAGGER_TEMPLATE = {
             "put": {
                 "tags": ["Prontuários"],
                 "summary": "Atualiza um prontuário existente.",
-                "description": "Nesta operação, o parâmetro `id` representa o `prontuario_id`.",
+                "description": "Atualiza o histórico, profissional, consentimento e o grau de vulnerabilidade simultaneamente.",
                 "parameters": [
                     {
-                        "name": "id",
+                        "name": "id_pessoa_rua",
                         "in": "path",
                         "required": True,
                         "type": "integer",
-                        "description": "ID do prontuário a atualizar.",
+                        "description": "ID da pessoa em situação de rua.",
                     },
                     _body_param(
                         "ProntuarioUpdateInput",
