@@ -185,7 +185,27 @@ CREATE TABLE IF NOT EXISTS vaga (
         FOREIGN KEY (abrigo_id) REFERENCES abrigo(id_abrigo)
         ON DELETE RESTRICT
 );
-
+-- =============================================================================
+-- TABELA: estadia
+-- Registra a estadia em vagas dos abrigos.
+-- Uma estadia pertence a UMA pessoa em UMA vaga POR DIA.
+-- =============================================================================
+CREATE TABLE estadia (
+    id_pessoa_rua INT UNSIGNED NOT NULL,
+    data_entrada DATE NOT NULL,
+    id_abrigo INT UNSIGNED NOT NULL,
+    numero_cama INT NOT NULL,
+    data_saida DATE NULL,
+    motivo_saida VARCHAR(255) NULL,
+    
+    PRIMARY KEY (id_pessoa_rua, data_entrada),
+    
+    CONSTRAINT fk_estadia_pessoa FOREIGN KEY (id_pessoa_rua) 
+        REFERENCES pessoa_rua(id_pessoa_rua) ON DELETE CASCADE,
+        
+    CONSTRAINT fk_estadia_abrigo FOREIGN KEY (id_abrigo) 
+        REFERENCES abrigo(id_abrigo) ON DELETE CASCADE
+);
 -- =============================================================================
 -- TABELA: encaminhamento
 -- Formaliza a ponte entre o sistema e a rede externa (CRAS, CREAS, UBS, etc.).
