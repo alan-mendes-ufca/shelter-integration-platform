@@ -117,15 +117,15 @@ def listar_por_status():
 
 
 # 4. ATUALIZAR STATUS (PUT)
-@encaminhamentos_bp.route("/<int:id_encaminhamento_pk>/status", methods=["PUT"])
-def atualizar_status(id_encaminhamento_pk: int):
+@encaminhamentos_bp.route("/<int:encaminhamento_id>/status", methods=["PUT"])
+def atualizar_status(encaminhamento_id: int):
     """
     Atualiza o status de um encaminhamento existente.
     ---
     tags:
       - Encaminhamentos
     parameters:
-      - name: id_encaminhamento_pk
+      - name: encaminhamento_id
         in: path
         type: integer
         required: true
@@ -154,26 +154,26 @@ def atualizar_status(id_encaminhamento_pk: int):
 
     try:
         if novo_status == "cancelado":
-            EncaminhamentoModel.cancelar(id_encaminhamento_pk)
+            # Passe a variável renomeada para o Model
+            EncaminhamentoModel.cancelar(encaminhamento_id)
         else:
-            EncaminhamentoModel.atualizar_status(id_encaminhamento_pk, novo_status)
+            EncaminhamentoModel.atualizar_status(encaminhamento_id, novo_status)
 
         return jsonify({"mensagem": "Status atualizado com sucesso!"}), 200
-
     except Exception as e:
         return jsonify({"erro": f"Erro ao atualizar: {str(e)}"}), 500
 
 
 # 5. CANCELAR ENCAMINHAMENTO (DELETE)
-@encaminhamentos_bp.route("/<int:id_encaminhamento_pk>", methods=["DELETE"])
-def cancelar_encaminhamento(id_encaminhamento_pk: int):
+@encaminhamentos_bp.route("/<int:encaminhamento_id>", methods=["DELETE"])
+def cancelar_encaminhamento(encaminhamento_id: int):
     """
     Cancela um encaminhamento (apenas se estiver com status 'pendente').
     ---
     tags:
       - Encaminhamentos
     parameters:
-      - name: id_encaminhamento_pk
+      - name: encaminhamento_id
         in: path
         type: integer
         required: true
@@ -184,9 +184,9 @@ def cancelar_encaminhamento(id_encaminhamento_pk: int):
         description: Não é permitido cancelar um item já processado.
     """
     try:
-        EncaminhamentoModel.cancelar(id_encaminhamento_pk)
-
+        resultado = EncaminhamentoModel.cancelar(encaminhamento_id)
+        if not resultado:
+            return jsonify({"erro": "Operação não permitida ou ID inexistente."}), 409
         return jsonify({"mensagem": "Encaminhamento cancelado com sucesso!"}), 200
-
     except Exception as e:
-        return jsonify({"erro": f"Erro interno ao cancelar: {str(e)}"}), 500
+        return jsonify({"erro": f"Erro ao cancelar: {str(e)}"}), 500
