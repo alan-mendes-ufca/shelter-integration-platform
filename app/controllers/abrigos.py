@@ -38,19 +38,14 @@ def criar_abrigo():
     if not dados:
         return jsonify({"erro": "Body JSON inválido ou ausente."}), 400
 
-    faltando = {"nome", "endereco", "capacidade_total"} - set(dados.keys())
-    if faltando:
-        raise ValidationError(
-            message=f"Campos obrigatórios ausentes: {sorted(faltando)}.",
-            action="Envie 'nome', 'endereco' e 'capacidade_total' no body.",
-        )
-
     try:
         abrigo = AbrigoModel.criar(dados)
     except ValueError as err:
         return jsonify({"erro": str(err)}), 400
     except Exception as err:
-        return jsonify({"erro": str(err)}), 500
+        return jsonify(
+            {"erro": "Erro interno ao criar abrigo.", "detalhes": str(err)}
+        ), 500
 
     if not abrigo:
         return jsonify({"erro": "Erro ao criar abrigo."}), 500
@@ -66,25 +61,21 @@ def listar_abrigos():
 
     Lista todos os abrigos ativos.
     Com ?vagas=disponivel, filtra apenas os que têm vagas livres (US07).
-<<<<<<< HEAD
-
-    Retorna:
-        200 + lista de abrigos
-=======
 
     Query param (opcional):
         vagas (str): "disponivel" → filtra abrigos com vagas_disponiveis > 0.
 
     Retorna:
         200 OK + lista de abrigos (pode ser vazia)
->>>>>>> c8b5a5a (feat: add abrigo and vaga endpoints)
     """
     apenas_com_vagas = request.args.get("vagas") == "disponivel"
 
     try:
         abrigos = AbrigoModel.listar(apenas_com_vagas=apenas_com_vagas)
     except Exception as err:
-        return jsonify({"erro": str(err)}), 500
+        return jsonify(
+            {"erro": "Erro interno ao listar abrigos.", "detalhes": str(err)}
+        ), 500
 
     return jsonify(abrigos), 200
 
@@ -103,10 +94,33 @@ def buscar_abrigo(abrigo_id: int):
         200 OK   + dados do abrigo
         404 Not Found se não existir
     """
+    dados = request.get_json(silent=True)
+    if not dados:
+        return jsonify({"erro": "Body JSON inválido ou ausente."}), 400
+
+    pessoa_id = dados.get("pessoa_id")
+    abrigo_id = dados.get("abrigo_id")
+
+    if not pessoa_id or not abrigo_id:
+        return jsonify(
+            {"erro": "Os campos 'pessoa_id' e 'abrigo_id' são obrigatórios."}
+        ), 400
+
     try:
-        abrigo = AbrigoModel.buscar_por_id(abrigo_id)
+        vaga = VagaModel.registrar_entrada(int(pessoa_id), int(abrigo_id))
+    except ValueError as err:
+        # Pessoa já acolhida
+        return jsonify({"erro": str(err)}), 409
+    except RuntimeError as err:
+        # Abrigo sem vagas
+        return jsonify({"erro": str(err)}), 409
     except Exception as err:
-        return jsonify({"erro": str(err)}), 500
+        return jsonify(
+            {"erro": "Erro interno ao registrar entrada.", "detalhes": str(err)}
+        ), 500
+
+    return jsonify(vaga), 201
+
 
     if not abrigo:
         return jsonify({"erro": "Abrigo não encontrado."}), 404
@@ -114,4 +128,29 @@ def buscar_abrigo(abrigo_id: int):
     return jsonify(abrigo), 200
 
 
+    Retorna:
+        200 + vaga atualizada (status='liberada')
+        404 se a vaga não existir
+        409 se a saída já tiver sido registrada
+    """
+    # Busca antes de tentar atualizar para diferenciar 404 de 409
+    from app.models.abrigo import VagaModel as VM
+
+    vaga_atual = VM._buscar_por_id(vaga_id)
+
+    if not vaga_atual:
+        return jsonify({"erro": "Vaga não encontrada."}), 404
+
+    if vaga_atual["status"] == "liberada":
+        return jsonify({"erro": "A saída desta vaga já foi registrada."}), 409
+
+    try:
+        vaga = VagaModel.registrar_saida(vaga_id)
+    except Exception as err:
+        return jsonify(
+            {"erro": "Erro interno ao registrar saída.", "detalhes": str(err)}
+        ), 500
+
+    if not vaga:
+        return jsonify({"erro": "Não foi possível registrar a saída."}), 500
 

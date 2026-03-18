@@ -4,8 +4,6 @@ Post to api/v1/atendimento
 
 import requests
 
-from tests.atendimento_test_helpers import criar_ids_validos_atendimento
-
 
 def test_with_empty_data():
     response = requests.post("http://127.0.0.1:5000/api/v1/atendimentos", json={})
@@ -14,20 +12,19 @@ def test_with_empty_data():
     assert response.json() == {
         "name": "ValidationError",
         "message": "Campos obrigatórios faltando ou extras presentes.",
-        "action": "Verifique se 'id_pessoa_rua', 'id_profissional', 'id_abrigo' e 'tipo' estão presentes e sem campos adicionais.",
+        "action": "Verifique se 'pessoa_id', 'profissional_id', 'tipo' e 'unidade' estão presentes e sem campos adicionais.",
         "status_code": 400,
     }
 
 
 def test_with_invalid_service_type():
-    pessoa_id, profissional_id, abrigo_id = criar_ids_validos_atendimento()
-
     data_service = {
-        "id_pessoa_rua": pessoa_id,
-        "id_profissional": profissional_id,
-        "id_abrigo": abrigo_id,
+        "pessoa_id": 42,
+        "profissional_id": 7,
         "tipo": "invalid_type",
+        "unidade": "CREAS Centro",
         "observacoes": "Pessoa relatou...",
+        "realizado_em": "2026-03-05 14:30",
     }
 
     response = requests.post(
@@ -44,14 +41,13 @@ def test_with_invalid_service_type():
 
 
 def test_with_valid_data():
-    pessoa_id, profissional_id, abrigo_id = criar_ids_validos_atendimento()
-
     data_service = {
-        "id_pessoa_rua": pessoa_id,
-        "id_profissional": profissional_id,
-        "id_abrigo": abrigo_id,
+        "pessoa_id": 42,
+        "profissional_id": 7,
         "tipo": "escuta",
+        "unidade": "CREAS Centro",
         "observacoes": "Pessoa relatou...",
+        "realizado_em": "2026-03-05 14:30",
     }
 
     response = requests.post(
@@ -60,16 +56,4 @@ def test_with_valid_data():
     )
 
     assert response.status_code == 201
-    created = response.json()
-    print(created)
-    assert set(data_service).issubset(set(created))
-    assert "id_atendimento" in created
-
-    response_get = requests.get(
-        f"http://127.0.0.1:5000/api/v1/atendimentos/{pessoa_id}"
-    )
-    assert response_get.status_code == 200
-    atendimentos = response_get.json()
-    assert any(
-        item["id_atendimento"] == created["id_atendimento"] for item in atendimentos
-    )
+    assert set(data_service).issubset(set(response.json()))

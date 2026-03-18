@@ -31,20 +31,21 @@ class AbrigoModel(Database):
             dict | None: Abrigo recém-criado.
 
         """
-        Regra de negócio:
-            vagas_disponiveis começa igual a capacidade_total.
-            O frontend nunca define vagas_disponiveis diretamente.
-        """
-        nome = (dados.get("nome") or "").strip()
-        endereco = (dados.get("endereco") or "").strip()
-        capacidade = dados.get("capacidade_total")
+        nome = str(dados.get("nome") or "").strip()
+        endereco = str(dados.get("endereco") or "").strip()
+        capacidade_total = dados.get("capacidade_total")
+        telefone = dados.get("telefone")
 
         if not nome:
-            raise ValueError("nome é obrigatório.")
+            raise ValueError("O campo 'nome' é obrigatório.")
         if not endereco:
-            raise ValueError("endereco é obrigatório.")
-        if capacidade is None or int(capacidade) <= 0:
-            raise ValueError("capacidade_total deve ser um inteiro positivo.")
+            raise ValueError("O campo 'endereco' é obrigatório.")
+        if capacidade_total is None:
+            raise ValueError("O campo 'capacidade_total' é obrigatório.")
+
+        capacidade_total = int(capacidade_total)
+        if capacidade_total <= 0:
+            raise ValueError("'capacidade_total' deve ser um inteiro positivo.")
 
         capacidade = int(capacidade)
 
@@ -84,20 +85,6 @@ query = "SELECT * FROM abrigo WHERE ativo = TRUE ORDER BY nome"
 
         rows = cls.query(query)
         return rows or []
-
-    @classmethod
-    def buscar_por_id(cls, abrigo_id: int) -> dict | None:
-        """
-        Retorna um abrigo pelo ID.
-
-        Args:
-            abrigo_id (int): ID do abrigo.
-
-        Returns:
-            dict | None: Dados do abrigo ou None se não existir.
-        """
-        rows = cls.query("SELECT * FROM abrigo WHERE id_abrigo = %s", (abrigo_id,))
-        return rows[0] if rows else None
 
     @classmethod
     def decrementar_vaga(cls, abrigo_id: int) -> bool:
@@ -142,12 +129,51 @@ query = "SELECT * FROM abrigo WHERE ativo = TRUE ORDER BY nome"
         O WHERE vagas_disponiveis < capacidade_total complementa o
         CHECK constraint do banco, impedindo ultrapassar o limite.
 
-        Args:
-            abrigo_id (int): ID do abrigo.
+        Raises:
+            ValueError: Se a pessoa já estiver acolhida em outro abrigo.
+            RuntimeError: Se o abrigo não tiver vagas disponíveis.
+        """
+        # 1. Pessoa já acolhida em algum abrigo?
+        vaga_ativa = cls.query(
+            "SELECT id_vaga FROM vaga WHERE pessoa_id = %s AND status = 'ocupada'",
+            (pessoa_id,),
+        )
+        if vaga_ativa:
+            raise ValueError(
+                "A pessoa já está acolhida em um abrigo. "
+                "Registre a saída antes de uma nova entrada."
+            )
+
+        # 2. Tenta decrementar — já verifica disponibilidade internamente
+        if not AbrigoModel.decrementar_vaga(abrigo_id):
+            raise RuntimeError("O abrigo não possui vagas disponíveis no momento.")
+
+        # 3. Insere o registro de ocupação
+        query_insert = """
+            INSERT INTO vaga (pessoa_id, abrigo_id, status)
+            VALUES (%s, %s, 'ocupada')
+        """
+        vaga_id = cls.query(query_insert, (pessoa_id, abrigo_id))
+
+        return cls._buscar_por_id(vaga_id)
+
+    @classmethod
+    def registrar_saida(cls, vaga_id: int) -> dict | None:
+        """
+        Registra a saída da pessoa do abrigo e libera a vaga (US09).
 
         Returns:
             bool: True sempre (constraint do banco protege o limite superior).
         """
+        # 1. Busca a vaga — diferencia "não existe" de "já liberada"
+        vaga = cls._buscar_por_id(vaga_id)
+        if not vaga:
+            return None  # controller → 404
+
+        if vaga["status"] == "liberada":
+            return None  # controller → 409
+
+        # 2. Atualiza status e preenche saida_em
         cls.query(
             """
             UPDATE abrigo

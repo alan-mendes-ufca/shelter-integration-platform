@@ -1,5 +1,4 @@
 from infra.database import Database
-from infra.erros import ValidationError
 
 
 class PessoaModel(Database):
@@ -16,27 +15,14 @@ class PessoaModel(Database):
     """
 
     @staticmethod
-    def _payload_obrigatorio(dados: object) -> dict:
-        if not isinstance(dados, dict) or not dados:
-            raise ValidationError(
-                message="Body JSON inválido ou ausente.",
-                action="Envie um JSON válido no corpo da requisição.",
-            )
-        return dados
-
-    @staticmethod
     def _texto_obrigatorio(valor: object, campo: str) -> str:
         texto = str(valor or "").strip()
         if not texto:
-            raise ValidationError(
-                message=f"{campo} é obrigatório.",
-                action=f"Preencha o campo '{campo}' com um valor válido.",
-            )
+            raise ValueError(f"{campo} é obrigatório.")
         return texto
 
     @classmethod
     def criar(cls, dados: dict) -> dict | None:
-        dados = cls._payload_obrigatorio(dados)
         nome = cls._texto_obrigatorio(dados.get("nome"), "nome")
         senha = cls._texto_obrigatorio(dados.get("senha"), "senha")
 

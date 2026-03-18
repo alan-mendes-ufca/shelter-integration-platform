@@ -8,39 +8,49 @@ no sistema, vinculando-os à tabela `pessoa`.
 from flask import Blueprint, jsonify, request
 
 from app.models.profissional import ProfissionalModel
-from infra.erros import InternalServerError, NotFoundError
 
 profissionais_bp = Blueprint("profissionais", __name__)
 
 
 @profissionais_bp.route("", methods=["POST"])
 def criar_profissional():
-    profissional = ProfissionalModel.criar(request.get_json(silent=True))
+    dados = request.get_json(silent=True)
+    if not dados:
+        return jsonify({"erro": "Body JSON inválido ou ausente."}), 400
+
+    try:
+        profissional = ProfissionalModel.criar(dados)
+    except ValueError as err:
+        return jsonify({"erro": str(err)}), 400
+    except Exception as err:
+        return jsonify(
+            {"erro": "Erro interno ou id_pessoa inexistente.", "detalhes": str(err)}
+        ), 500
 
     if not profissional:
-        raise InternalServerError(
-            message="Erro ao criar profissional.",
-            action="Tente novamente mais tarde.",
-        )
+        return jsonify({"erro": "Erro ao criar profissional."}), 500
 
     return jsonify(profissional), 201
 
 
 @profissionais_bp.route("/<int:profissional_id>", methods=["GET"])
 def buscar_por_id(profissional_id: int):
-    profissional = ProfissionalModel.buscar_por_id(profissional_id)
+    try:
+        profissional = ProfissionalModel.buscar_por_id(profissional_id)
+    except Exception:
+        return jsonify({"erro": "Falha ao buscar profissional."}), 500
 
     if not profissional:
-        raise NotFoundError(
-            message="Profissional não encontrado.",
-            action="Verifique o ID informado.",
-        )
+        return jsonify({"erro": "Profissional não encontrado."}), 404
 
-    return jsonify(profissional), 200
+    return jsonify(profissional), 201
 
 
 @profissionais_bp.route("", methods=["GET"])
 def listar_profissionais():
-    profissionais = ProfissionalModel.listar()
+    try:
+        profissionais = ProfissionalModel.listar()
+    except Exception:
+        return jsonify({"erro": "Erro interno ao listar profissionais."}), 500
 
-    return jsonify(profissionais), 200
+    return jsonify(profissionais), 201

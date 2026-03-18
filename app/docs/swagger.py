@@ -133,21 +133,9 @@ SWAGGER_TEMPLATE = {
         "ErrorResponse": {
             "type": "object",
             "properties": {
-                "name": {"type": "string", "example": "ValidationError"},
-                "message": {
-                    "type": "string",
-                    "example": "Body JSON inválido ou ausente.",
-                },
-                "action": {
-                    "type": "string",
-                    "example": "Envie um JSON válido no corpo da requisição.",
-                },
-                "status_code": {"type": "integer", "example": 400},
-                "erro": {
-                    "type": "string",
-                    "example": "Mensagem de erro legada retornada por alguns endpoints.",
-                },
+                "erro": {"type": "string", "example": "Endpoint não implementado."}
             },
+            "required": ["erro"],
         },
         "HelloResponse": {
             "type": "object",
@@ -231,17 +219,8 @@ SWAGGER_TEMPLATE = {
         "Consentimento": {
             "type": "object",
             "properties": {
-                "id_consentimento": {"type": "integer", "example": 1},
-                "id_pessoa_rua": {"type": "integer", "example": 1},
+                "pessoa_id": {"type": "integer", "example": 1},
                 "ativo": {"type": "boolean", "example": True},
-                "registrado_em": {
-                    "type": "string",
-                    "example": "2026-03-18 12:30:00",
-                },
-                "revogado_em": {
-                    "type": "string",
-                    "example": "2026-03-20 09:15:00",
-                },
                 "observacao": {
                     "type": "string",
                     "example": "Explicado o uso dos dados.",
@@ -271,20 +250,17 @@ SWAGGER_TEMPLATE = {
         "ConsentimentoStatusResponse": {
             "type": "object",
             "properties": {
-                "status": {
-                    "type": "string",
-                    "example": "O consentimento está ativo.",
-                }
+                "ativo": {"type": "boolean", "example": True},
+                "consentimento": _schema("Consentimento"),
             },
-            "required": ["status"],
+            "required": ["ativo"],
         },
         "Atendimento": {
             "type": "object",
             "properties": {
-                "id_atendimento": {"type": "integer", "example": 15},
-                "id_pessoa_rua": {"type": "integer", "example": 42},
-                "id_profissional": {"type": "integer", "example": 7},
-                "id_abrigo": {"type": "integer", "example": 3},
+                "id": {"type": "integer", "example": 15},
+                "pessoa_id": {"type": "integer", "example": 42},
+                "profissional_id": {"type": "integer", "example": 7},
                 "tipo": {
                     "type": "string",
                     "enum": [
@@ -297,6 +273,7 @@ SWAGGER_TEMPLATE = {
                     ],
                     "example": "escuta",
                 },
+                "unidade": {"type": "string", "example": "CREAS Centro"},
                 "observacoes": {
                     "type": "string",
                     "example": "Pessoa relatou necessidade de benefício.",
@@ -306,11 +283,10 @@ SWAGGER_TEMPLATE = {
         },
         "AtendimentoCreateInput": {
             "type": "object",
-            "required": ["id_pessoa_rua", "id_profissional", "id_abrigo", "tipo"],
+            "required": ["pessoa_id", "profissional_id", "tipo", "unidade"],
             "properties": {
-                "id_pessoa_rua": {"type": "integer", "example": 42},
-                "id_profissional": {"type": "integer", "example": 7},
-                "id_abrigo": {"type": "integer", "example": 3},
+                "pessoa_id": {"type": "integer", "example": 42},
+                "profissional_id": {"type": "integer", "example": 7},
                 "tipo": {
                     "type": "string",
                     "enum": [
@@ -323,7 +299,9 @@ SWAGGER_TEMPLATE = {
                     ],
                     "example": "alimentacao",
                 },
+                "unidade": {"type": "string", "example": "CREAS Centro"},
                 "observacoes": {"type": "string"},
+                "realizado_em": {"type": "string", "example": "2026-03-05 14:30"},
             },
         },
         "AtendimentoUpdateInput": {
@@ -340,8 +318,9 @@ SWAGGER_TEMPLATE = {
                         "outro",
                     ],
                 },
-                "id_abrigo": {"type": "integer"},
+                "unidade": {"type": "string"},
                 "observacoes": {"type": "string"},
+                "realizado_em": {"type": "string"},
             },
         },
         "Profissional": {
@@ -410,7 +389,7 @@ SWAGGER_TEMPLATE = {
         "Abrigo": {
             "type": "object",
             "properties": {
-                "id_abrigo": {"type": "integer", "example": 3},
+                "id": {"type": "integer", "example": 3},
                 "nome": {"type": "string", "example": "Abrigo Esperança"},
                 "endereco": {"type": "string", "example": "Rua das Flores, 100"},
                 "capacidade_total": {"type": "integer", "example": 50},
@@ -431,8 +410,8 @@ SWAGGER_TEMPLATE = {
         "Vaga": {
             "type": "object",
             "properties": {
-                "id_vaga": {"type": "integer", "example": 21},
-                "id_pessoa_rua": {"type": "integer", "example": 42},
+                "id": {"type": "integer", "example": 21},
+                "pessoa_id": {"type": "integer", "example": 42},
                 "abrigo_id": {"type": "integer", "example": 3},
                 "status": {"type": "string", "example": "ocupada"},
                 "entrada_em": {"type": "string", "example": "2026-03-05 18:10"},
@@ -743,10 +722,10 @@ SWAGGER_TEMPLATE = {
             },
             "get": {
                 "tags": ["Atendimentos"],
-                "summary": "Filtra atendimentos por abrigo e período.",
+                "summary": "Filtra atendimentos por unidade e período.",
                 "parameters": [
                     _query_param(
-                        "id_abrigo", "ID do abrigo para filtragem.", required=True
+                        "unidade", "Nome ou parte do nome da unidade.", required=True
                     ),
                     _query_param(
                         "data_inicio",
