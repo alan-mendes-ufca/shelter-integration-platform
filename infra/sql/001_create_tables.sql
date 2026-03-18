@@ -14,8 +14,8 @@
 --   2. pessoa_rua         (independente)
 --   3. consentimento      (depende de pessoa_rua)
 --   4. prontuario         (depende de pessoa_rua + consentimento)
---   5. atendimento        (depende de pessoa_rua + profissional)
---   6. abrigo             (independente)
+--   5. abrigo             (independente)
+--   6. atendimento        (depende de pessoa_rua + profissional + abrigo)
 --   7. vaga               (depende de pessoa_rua + abrigo)
 --   8. encaminhamento     (depende de atendimento + prontuario)
 --
@@ -82,19 +82,6 @@ CREATE TABLE IF NOT EXISTS pessoa_rua(
 -- Só bloqueia acesso ao prontuário (US02, US03).
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS consentimento (
-<<<<<<< HEAD
-
-    pessoa_id   INT UNSIGNED PRIMARY KEY,
-
-    data_assinatura DATETIME,
-    ativo           BOOLEAN   NOT NULL DEFAULT TRUE,   
-    validade        DATETIME,
-    observacao      TEXT,
-
-    CONSTRAINT fk_consentimento_pessoa_rua
-        FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id_pessoa_rua)
-        ON DELETE RESTRICT                             
-=======
     id_consentimento INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     id_pessoa_rua        INT UNSIGNED    NOT NULL,
     ativo            BOOLEAN         NOT NULL DEFAULT TRUE,   -- FALSE = revogado
@@ -105,7 +92,6 @@ CREATE TABLE IF NOT EXISTS consentimento (
     CONSTRAINT fk_consentimento_pessoa
         FOREIGN KEY (id_pessoa_rua) REFERENCES pessoa_rua(id_pessoa_rua)
         ON DELETE RESTRICT                                   -- Não permite deletar pessoa com consentimento
->>>>>>> 8ae58e4 (feat: implement `atendimento` model and controllers)
 );
 
 -- =============================================================================
@@ -129,33 +115,6 @@ CREATE TABLE IF NOT EXISTS prontuario (
 );
 
 -- =============================================================================
--- TABELA: atendimento
--- Registro operacional do dia a dia. O ÚNICO módulo que SEMPRE ocorre,
--- independente de consentimento ou prontuário.
--- Tipos: 'escuta', 'alimentacao', 'banho', 'saude', 'juridico', 'outro'
--- O atendimento_id é vínculo obrigatório para qualquer encaminhamento (US04).
--- =============================================================================
-CREATE TABLE IF NOT EXISTS atendimento (
-    id_atendimento      INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
-    id_pessoa_rua           INT UNSIGNED    NOT NULL,
-    id_profissional     INT UNSIGNED    NOT NULL,
-    tipo                ENUM('escuta','alimentacao','banho','saude','juridico','outro') NOT NULL,
-    unidade             VARCHAR(150)    NOT NULL,            -- Nome/localização da unidade de atendimento
-    observacoes         TEXT,
-    realizado_em        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    criado_em           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    atualizado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_atendimento_pessoa
-        FOREIGN KEY (id_pessoa_rua) REFERENCES pessoa_rua(id_pessoa_rua)
-        ON DELETE RESTRICT,
-
-    CONSTRAINT fk_atendimento_profissional
-        FOREIGN KEY (id_profissional) REFERENCES profissional(id_profissional)
-        ON DELETE RESTRICT
-);
-
--- =============================================================================
 -- TABELA: abrigo
 -- Cadastro dos abrigos disponíveis na rede de apoio.
 -- O campo `vagas_disponiveis` é gerenciado automaticamente pelo sistema
@@ -173,6 +132,37 @@ CREATE TABLE IF NOT EXISTS abrigo (
 
     -- Garante que vagas_disponiveis nunca ultrapasse a capacidade
     CONSTRAINT chk_vagas CHECK (vagas_disponiveis <= capacidade_total)
+);
+
+-- =============================================================================
+-- TABELA: atendimento
+-- Registro operacional do dia a dia. O ÚNICO módulo que SEMPRE ocorre,
+-- independente de consentimento ou prontuário.
+-- Tipos: 'escuta', 'alimentacao', 'banho', 'saude', 'juridico', 'outro'
+-- O atendimento_id é vínculo obrigatório para qualquer encaminhamento (US04).
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS atendimento (
+    id_atendimento      INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
+    id_pessoa_rua       INT UNSIGNED    NOT NULL,
+    id_profissional     INT UNSIGNED    NOT NULL,
+    id_abrigo           INT UNSIGNED    NOT NULL,
+    tipo                ENUM('escuta','alimentacao','banho','saude','juridico','outro') NOT NULL,
+    observacoes         TEXT,
+    realizado_em        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    criado_em           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_atendimento_pessoa
+        FOREIGN KEY (id_pessoa_rua) REFERENCES pessoa_rua(id_pessoa_rua)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_atendimento_profissional
+        FOREIGN KEY (id_profissional) REFERENCES profissional(id_profissional)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_atendimento_abrigo
+        FOREIGN KEY (id_abrigo) REFERENCES abrigo(id_abrigo)
+        ON DELETE RESTRICT
 );
 
 -- =============================================================================
@@ -242,7 +232,7 @@ CREATE TABLE IF NOT EXISTS historico_gestao (
 );
 
 
-CREATE TABLE IF NOT EXISTS atuacao 
+CREATE TABLE IF NOT EXISTS atuacao
 (
     id_profissional INT NOT NULL REFERENCES profissional(id_profissional),
     id_abrigo INT NOT NULL REFERENCES abrigo(abrigo_id),

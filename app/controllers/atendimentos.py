@@ -44,26 +44,36 @@ def listar_atendimentos_pessoa(pessoa_id: int):
 
 @atendimentos_bp.route("", methods=["GET"])
 def listar_atendimentos_por_filtro():
-    unidade = request.args.get("unidade", "").strip()
+    id_abrigo_raw = request.args.get("id_abrigo", "").strip()
     data_inicio = request.args.get("data_inicio", "").strip()
     data_fim = request.args.get("data_fim", "").strip()
 
-    if not unidade or not data_inicio or not data_fim:
+    if not id_abrigo_raw or not data_inicio or not data_fim:
         raise ValidationError(
             message="Parâmetros obrigatórios ausentes para filtragem.",
-            action="Envie 'unidade', 'data_inicio' e 'data_fim' na query string.",
+            action="Envie 'id_abrigo', 'data_inicio' e 'data_fim' na query string.",
         )
 
     try:
-        atendimentos = AtendimentoModel.listar_por_unidade_e_periodo(
-            unidade=unidade,
+        id_abrigo = int(id_abrigo_raw)
+    except ValueError as err:
+        raise ValidationError(
+            message="O parâmetro 'id_abrigo' deve ser numérico.",
+            action="Informe um id_abrigo inteiro e válido.",
+        ) from err
+
+    try:
+        atendimentos = AtendimentoModel.listar_por_abrigo_e_periodo(
+            id_abrigo=id_abrigo,
             data_inicio=data_inicio,
             data_fim=data_fim,
         )
+    except ValidationError:
+        raise
     except Exception:
         raise ValidationError(
             message="Não foi possível filtrar os atendimentos com os parâmetros informados.",
-            action="Verifique os valores enviados para 'unidade', 'data_inicio' e 'data_fim'.",
+            action="Verifique os valores enviados para 'id_abrigo', 'data_inicio' e 'data_fim'.",
         )
 
     return jsonify(atendimentos), 200

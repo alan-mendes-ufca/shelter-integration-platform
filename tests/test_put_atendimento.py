@@ -5,6 +5,7 @@ Put to api/v1/atendimentos/{id}
 import random
 import requests
 
+from app.models.abrigo import AbrigoModel
 from app.models.atendimento import AtendimentoModel
 from tests.atendimento_test_helpers import criar_ids_validos_atendimento
 
@@ -38,20 +39,29 @@ def test_put_with_nonexistent_id():
 
 
 def test_put_with_valid_data_updates_record():
-    pessoa_id, profissional_id = criar_ids_validos_atendimento()
+    pessoa_id, profissional_id, abrigo_id = criar_ids_validos_atendimento()
     created = AtendimentoModel.registrar(
         {
             "id_pessoa_rua": pessoa_id,
             "id_profissional": profissional_id,
+            "id_abrigo": abrigo_id,
             "tipo": "escuta",
-            "unidade": "Unidade Inicial",
             "observacoes": "Observacao inicial",
+        }
+    )
+
+    novo_abrigo = AbrigoModel.criar(
+        {
+            "nome": f"Abrigo Atualizado {random.randint(1000, 999999)}",
+            "endereco": "Rua da Atualizacao, 123",
+            "capacidade_total": 30,
+            "telefone": None,
         }
     )
 
     payload = {
         "tipo": "banho",
-        "unidade": "Unidade Atualizada",
+        "id_abrigo": novo_abrigo["id_abrigo"],
         "observacoes": "Observacao atualizada",
     }
 
@@ -64,7 +74,7 @@ def test_put_with_valid_data_updates_record():
     updated = response.json()
     assert updated["id_atendimento"] == created["id_atendimento"]
     assert updated["tipo"] == payload["tipo"]
-    assert updated["unidade"] == payload["unidade"]
+    assert updated["id_abrigo"] == payload["id_abrigo"]
     assert updated["observacoes"] == payload["observacoes"]
 
     response_get = requests.get(
@@ -75,7 +85,7 @@ def test_put_with_valid_data_updates_record():
     assert any(
         item["id_atendimento"] == created["id_atendimento"]
         and item["tipo"] == payload["tipo"]
-        and item["unidade"] == payload["unidade"]
+        and item["id_abrigo"] == payload["id_abrigo"]
         and item["observacoes"] == payload["observacoes"]
         for item in atendimentos
     )

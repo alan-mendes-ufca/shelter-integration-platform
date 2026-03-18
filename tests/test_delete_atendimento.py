@@ -10,14 +10,14 @@ from tests.atendimento_test_helpers import criar_ids_validos_atendimento
 
 
 def _create_person_and_atendimento() -> int:
-    pessoa_id, profissional_id = criar_ids_validos_atendimento()
+    pessoa_id, profissional_id, abrigo_id = criar_ids_validos_atendimento()
 
     atendimento = AtendimentoModel.registrar(
         {
             "id_pessoa_rua": pessoa_id,
             "id_profissional": profissional_id,
+            "id_abrigo": abrigo_id,
             "tipo": "escuta",
-            "unidade": "Unidade Delete",
         }
     )
 

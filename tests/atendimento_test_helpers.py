@@ -1,11 +1,12 @@
 import random
 
+from app.models.abrigo import AbrigoModel
 from app.models.pessoa import PessoaModel
 from app.models.pessoa_rua import PessoaRuaModel
 from app.models.profissional import ProfissionalModel
 
 
-def criar_ids_validos_atendimento() -> tuple[int, int]:
+def criar_ids_validos_atendimento() -> tuple[int, int, int]:
     suffix = random.randint(1000, 999999)
 
     pessoa_sistema = PessoaModel.criar(
@@ -30,4 +31,17 @@ def criar_ids_validos_atendimento() -> tuple[int, int]:
         }
     )
 
-    return pessoa_rua["id_pessoa_rua"], profissional["id_profissional"]
+    abrigo = AbrigoModel.criar(
+        {
+            "nome": f"Abrigo Teste {suffix}",
+            "endereco": f"Rua Teste {suffix}",
+            "capacidade_total": 50,
+            "telefone": None,
+        }
+    )
+
+    return (
+        pessoa_rua["id_pessoa_rua"],
+        profissional["id_profissional"],
+        abrigo["id_abrigo"],
+    )

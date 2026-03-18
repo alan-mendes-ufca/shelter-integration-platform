@@ -23,14 +23,14 @@ def test_with_invalid_id():
 
 
 def test_with_valid_pessoa_id():
-    pessoa_id, profissional_id = criar_ids_validos_atendimento()
+    pessoa_id, profissional_id, abrigo_id = criar_ids_validos_atendimento()
 
     created_atendimento = AtendimentoModel.registrar(
         {
             "id_pessoa_rua": pessoa_id,
             "id_profissional": profissional_id,
+            "id_abrigo": abrigo_id,
             "tipo": "escuta",
-            "unidade": "Unidade Centro",
             "observacoes": "Teste de listagem por pessoa",
         }
     )
@@ -55,21 +55,20 @@ def test_with_missing_filter_params():
     assert response.json() == {
         "name": "ValidationError",
         "message": "Parâmetros obrigatórios ausentes para filtragem.",
-        "action": "Envie 'unidade', 'data_inicio' e 'data_fim' na query string.",
+        "action": "Envie 'id_abrigo', 'data_inicio' e 'data_fim' na query string.",
         "status_code": 400,
     }
 
 
 def test_with_filter_after_register():
-    pessoa_id, profissional_id = criar_ids_validos_atendimento()
-    unidade_teste = f"Unidade Filtro {random.randint(1000, 9999)}"
+    pessoa_id, profissional_id, abrigo_id = criar_ids_validos_atendimento()
 
     created_atendimento = AtendimentoModel.registrar(
         {
             "id_pessoa_rua": pessoa_id,
             "id_profissional": profissional_id,
+            "id_abrigo": abrigo_id,
             "tipo": "escuta",
-            "unidade": unidade_teste,
             "observacoes": "Teste de filtro após registro",
         }
     )
@@ -78,7 +77,7 @@ def test_with_filter_after_register():
     response = requests.get(
         "http://127.0.0.1:5000/api/v1/atendimentos",
         params={
-            "unidade": unidade_teste,
+            "id_abrigo": abrigo_id,
             "data_inicio": data_hoje,
             "data_fim": data_hoje,
         },
@@ -89,6 +88,6 @@ def test_with_filter_after_register():
     assert isinstance(body, list)
     assert any(
         item["id_atendimento"] == created_atendimento["id_atendimento"]
-        and item["unidade"] == unidade_teste
+        and item["id_abrigo"] == abrigo_id
         for item in body
     )

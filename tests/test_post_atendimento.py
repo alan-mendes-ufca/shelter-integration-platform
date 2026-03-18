@@ -14,19 +14,19 @@ def test_with_empty_data():
     assert response.json() == {
         "name": "ValidationError",
         "message": "Campos obrigatórios faltando ou extras presentes.",
-        "action": "Verifique se 'id_pessoa_rua', 'id_profissional', 'tipo' e 'unidade' estão presentes e sem campos adicionais.",
+        "action": "Verifique se 'id_pessoa_rua', 'id_profissional', 'id_abrigo' e 'tipo' estão presentes e sem campos adicionais.",
         "status_code": 400,
     }
 
 
 def test_with_invalid_service_type():
-    pessoa_id, profissional_id = criar_ids_validos_atendimento()
+    pessoa_id, profissional_id, abrigo_id = criar_ids_validos_atendimento()
 
     data_service = {
         "id_pessoa_rua": pessoa_id,
         "id_profissional": profissional_id,
+        "id_abrigo": abrigo_id,
         "tipo": "invalid_type",
-        "unidade": "CREAS Centro",
         "observacoes": "Pessoa relatou...",
     }
 
@@ -44,13 +44,13 @@ def test_with_invalid_service_type():
 
 
 def test_with_valid_data():
-    pessoa_id, profissional_id = criar_ids_validos_atendimento()
+    pessoa_id, profissional_id, abrigo_id = criar_ids_validos_atendimento()
 
     data_service = {
         "id_pessoa_rua": pessoa_id,
         "id_profissional": profissional_id,
+        "id_abrigo": abrigo_id,
         "tipo": "escuta",
-        "unidade": "CREAS Centro",
         "observacoes": "Pessoa relatou...",
     }
 

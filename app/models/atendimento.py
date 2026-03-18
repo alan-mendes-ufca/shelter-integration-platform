@@ -1,5 +1,6 @@
 from infra.database import Database  # noqa: F401 — usado nos TODOs abaixo
 from infra.erros import NotFoundError, ValidationError
+from .abrigo import AbrigoModel
 from .pessoa_rua import PessoaRuaModel
 from .profissional import ProfissionalModel
 
@@ -16,14 +17,14 @@ class AtendimentoModel(Database):
 
     @classmethod
     def _validar_dados_registro(cls, data: dict) -> None:
-        required_fields = {"id_pessoa_rua", "id_profissional", "tipo", "unidade"}
+        required_fields = {"id_pessoa_rua", "id_profissional", "id_abrigo", "tipo"}
         optional_fields = {"observacoes"}
         allowed_fields = required_fields | optional_fields
 
         if not data:
             raise ValidationError(
                 message="Campos obrigatórios faltando ou extras presentes.",
-                action="Verifique se 'id_pessoa_rua', 'id_profissional', 'tipo' e 'unidade' estão presentes e sem campos adicionais.",
+                action="Verifique se 'id_pessoa_rua', 'id_profissional', 'id_abrigo' e 'tipo' estão presentes e sem campos adicionais.",
             )
 
         data_keys = set(data.keys())
@@ -32,11 +33,13 @@ class AtendimentoModel(Database):
         ):
             raise ValidationError(
                 message="Campos obrigatórios faltando ou extras presentes.",
-                action="Verifique se 'id_pessoa_rua', 'id_profissional', 'tipo' e 'unidade' estão presentes e sem campos adicionais.",
+                action="Verifique se 'id_pessoa_rua', 'id_profissional', 'id_abrigo' e 'tipo' estão presentes e sem campos adicionais.",
             )
 
         if data["tipo"] not in cls.TIPOS_ATENDIMENTO_VALIDOS:
             cls._raise_tipo_invalido()
+
+        cls._validar_abrigo(data.get("id_abrigo"))
 
     @classmethod
     def _validar_dados_atualizacao(cls, dados: dict) -> set[str]:
@@ -46,16 +49,19 @@ class AtendimentoModel(Database):
                 action="Envie ao menos um campo para atualização.",
             )
 
-        campos_permitidos = {"tipo", "unidade", "observacoes"}
+        campos_permitidos = {"tipo", "id_abrigo", "observacoes"}
         campos_invalidos = set(dados.keys()) - campos_permitidos
         if campos_invalidos:
             raise ValidationError(
                 message="Body contém campos não permitidos para atualização.",
-                action="Utilize somente os campos: 'tipo', 'unidade', 'observacoes'.",
+                action="Utilize somente os campos: 'tipo', 'id_abrigo', 'observacoes'.",
             )
 
         if "tipo" in dados and dados["tipo"] not in cls.TIPOS_ATENDIMENTO_VALIDOS:
             cls._raise_tipo_invalido()
+
+        if "id_abrigo" in dados:
+            cls._validar_abrigo(dados.get("id_abrigo"))
 
         return campos_permitidos
 
@@ -65,6 +71,25 @@ class AtendimentoModel(Database):
             message="Campo de 'tipo' preenchido com opção inválida.",
             action="Utilize somente uma das opção a seguir: 'escuta', 'alimentacao', 'banho', 'saude', 'juridico', 'outro'.",
         )
+
+    @staticmethod
+    def _validar_abrigo(id_abrigo: object) -> int:
+        try:
+            abrigo_id = int(id_abrigo)
+        except (TypeError, ValueError) as err:
+            raise ValidationError(
+                message="O campo 'id_abrigo' deve ser um inteiro válido.",
+                action="Informe um id_abrigo existente e numérico.",
+            ) from err
+
+        abrigo = AbrigoModel.buscar_por_id(abrigo_id)
+        if not abrigo:
+            raise ValidationError(
+                message="Abrigo não encontrado.",
+                action="Informe um id_abrigo válido e ativo.",
+            )
+
+        return abrigo_id
 
     @classmethod
     def _buscar_atendimento_valido(cls, atendimento_id: int) -> dict:
@@ -79,22 +104,22 @@ class AtendimentoModel(Database):
     @classmethod
     def registrar(cls, data: dict) -> dict | None:
         cls._validar_dados_registro(data)
-        print(data)
 
         pessoa_rua = PessoaRuaModel.buscar_por_id(int(data["id_pessoa_rua"]))
         profissional = ProfissionalModel.buscar_por_id(int(data["id_profissional"]))
+        abrigo_id = cls._validar_abrigo(data.get("id_abrigo"))
 
         query = """
-            INSERT INTO atendimento 
-                (id_pessoa_rua, id_profissional, tipo, unidade, observacoes)
-            VALUES 
+            INSERT INTO atendimento
+                (id_pessoa_rua, id_profissional, id_abrigo, tipo, observacoes)
+            VALUES
                 (%s, %s, %s, %s, %s);
         """
         params = (
             pessoa_rua["id_pessoa_rua"],
             profissional["id_profissional"],
+            abrigo_id,
             data["tipo"],
-            data["unidade"],
             data.get("observacoes", "Sem observações"),
         )
 
@@ -128,17 +153,18 @@ class AtendimentoModel(Database):
         return result or []
 
     @classmethod
-    def listar_por_unidade_e_periodo(
-        cls, unidade: str, data_inicio: str, data_fim: str
+    def listar_por_abrigo_e_periodo(
+        cls, id_abrigo: int, data_inicio: str, data_fim: str
     ) -> list[dict]:
+        abrigo_id = cls._validar_abrigo(id_abrigo)
         query = """
             SELECT *
             FROM atendimento
-            WHERE unidade LIKE %s
+            WHERE id_abrigo = %s
               AND realizado_em BETWEEN %s AND CONCAT(%s, ' 23:59:59')
             ORDER BY realizado_em DESC;
         """
-        params = (f"%{unidade}%", data_inicio, data_fim)
+        params = (abrigo_id, data_inicio, data_fim)
         result = cls.query(query, params)
         return result or []
 
@@ -150,14 +176,14 @@ class AtendimentoModel(Database):
         atendimento_atualizado = {**atendimento_atual, **dados}
         params = (
             atendimento_atualizado["tipo"],
-            atendimento_atualizado["unidade"],
+            atendimento_atualizado["id_abrigo"],
             atendimento_atualizado["observacoes"],
             atendimento_id,
         )
 
         query = """
             UPDATE atendimento
-            SET tipo = %s, unidade = %s, observacoes = %s
+            SET tipo = %s, id_abrigo = %s, observacoes = %s
             WHERE id_atendimento = %s;
         """
 

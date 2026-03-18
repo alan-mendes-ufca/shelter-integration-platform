@@ -261,6 +261,7 @@ SWAGGER_TEMPLATE = {
                 "id": {"type": "integer", "example": 15},
                 "pessoa_id": {"type": "integer", "example": 42},
                 "profissional_id": {"type": "integer", "example": 7},
+                "id_abrigo": {"type": "integer", "example": 3},
                 "tipo": {
                     "type": "string",
                     "enum": [
@@ -273,7 +274,6 @@ SWAGGER_TEMPLATE = {
                     ],
                     "example": "escuta",
                 },
-                "unidade": {"type": "string", "example": "CREAS Centro"},
                 "observacoes": {
                     "type": "string",
                     "example": "Pessoa relatou necessidade de benefício.",
@@ -283,10 +283,11 @@ SWAGGER_TEMPLATE = {
         },
         "AtendimentoCreateInput": {
             "type": "object",
-            "required": ["pessoa_id", "profissional_id", "tipo", "unidade"],
+            "required": ["pessoa_id", "profissional_id", "id_abrigo", "tipo"],
             "properties": {
                 "pessoa_id": {"type": "integer", "example": 42},
                 "profissional_id": {"type": "integer", "example": 7},
+                "id_abrigo": {"type": "integer", "example": 3},
                 "tipo": {
                     "type": "string",
                     "enum": [
@@ -299,7 +300,6 @@ SWAGGER_TEMPLATE = {
                     ],
                     "example": "alimentacao",
                 },
-                "unidade": {"type": "string", "example": "CREAS Centro"},
                 "observacoes": {"type": "string"},
             },
         },
@@ -317,7 +317,7 @@ SWAGGER_TEMPLATE = {
                         "outro",
                     ],
                 },
-                "unidade": {"type": "string"},
+                "id_abrigo": {"type": "integer"},
                 "observacoes": {"type": "string"},
             },
         },
@@ -720,10 +720,10 @@ SWAGGER_TEMPLATE = {
             },
             "get": {
                 "tags": ["Atendimentos"],
-                "summary": "Filtra atendimentos por unidade e período.",
+                "summary": "Filtra atendimentos por abrigo e período.",
                 "parameters": [
                     _query_param(
-                        "unidade", "Nome ou parte do nome da unidade.", required=True
+                        "id_abrigo", "ID do abrigo para filtragem.", required=True
                     ),
                     _query_param(
                         "data_inicio",

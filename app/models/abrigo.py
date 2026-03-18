@@ -102,6 +102,14 @@ class AbrigoModel(Database):
         return rows or []
 
     @classmethod
+    def buscar_por_id(cls, abrigo_id: int) -> dict | None:
+        """Busca um abrigo ativo pelo ID."""
+        rows = cls.query(
+            "SELECT * FROM abrigo WHERE id_abrigo = %s AND ativo = TRUE", (abrigo_id,)
+        )
+        return rows[0] if rows else None
+
+    @classmethod
     def decrementar_vaga(cls, abrigo_id: int) -> bool:
         """
         Decrementa vagas_disponiveis do abrigo em 1, somente se houver vagas.
