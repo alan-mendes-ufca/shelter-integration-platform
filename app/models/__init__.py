@@ -18,7 +18,7 @@ from .consentimento import ConsentimentoModel
 from .atendimento import AtendimentoModel
 from .profissional import ProfissionalModel
 from .prontuario import ProntuarioModel
-from .abrigo import AbrigoModel, VagaModel
+from .abrigo import AbrigoModel, VagaCamaModel, EstadiaModel
 from .encaminhamento import EncaminhamentoModel
 
 __all__ = [
@@ -28,6 +28,7 @@ __all__ = [
     "ProfissionalModel",
     "ProntuarioModel",
     "AbrigoModel",
-    "VagaModel",
+    "VagaCamaModel",
+    "EstadiaModel",
     "EncaminhamentoModel",
 ]

@@ -1,22 +1,27 @@
 """
-Model: Abrigo + Vaga
-====================
+Model: Abrigo + VagaCama + Estadia
+====================================
 
-`AbrigoModel` cuida do cadastro dos abrigos e da contagem de vagas.
-`VagaModel` cuida das entradas e saídas individuais de pessoas nos abrigos.
+Estrutura alinhada ao DER original:
 
-DÉBITO TÉCNICO: entrada/saída envolve duas queries (vaga + contador do abrigo).
-Idealmente seriam uma transação atômica. Por enquanto são executadas em sequência
-— se a segunda falhar, o sistema ficará inconsistente. Implementar suporte a
-transações no Database.query() quando possível.
+  AbrigoModel   → cadastro e contagem de vagas do abrigo
+  VagaCamaModel → inventário de camas numeradas por abrigo
+  EstadiaModel  → ocupação de uma cama específica por uma pessoa
 
-Decisões de design (divergências do DER original documentadas):
-- DER tem vaga_cama + estadia separadas; código usa tabela única `vaga`.
-  Motivo: simplificação acordada — não controlamos cama específica, só ocupação.
-- DER liga abrigo a gestor/historico_gestao; essa parte não está implementada.
-  Motivo: fora do escopo atual, registrado como débito técnico.
-- DER liga atendimento a abrigo via FK; código usa campo `unidade` (texto livre).
-  Motivo: atendimento pode ocorrer fora de abrigos cadastrados.
+Fluxo de entrada:
+  EstadiaModel.registrar_entrada(pessoa_id, abrigo_id)
+    → VagaCamaModel.alocar_cama(abrigo_id)       — encontra e ocupa cama livre
+    → AbrigoModel.decrementar_vaga(abrigo_id)     — atualiza o contador
+    → INSERT em estadia
+
+Fluxo de saída:
+  EstadiaModel.registrar_saida(pessoa_id, motivo_saida)
+    → UPDATE estadia SET data_saida=NOW()
+    → VagaCamaModel.liberar_cama(numero_cama, abrigo_id)
+    → AbrigoModel.incrementar_vaga(abrigo_id)
+
+DÉBITO TÉCNICO: múltiplas queries em sequência sem transação atômica.
+Implementar suporte a transações no Database.query() quando possível.
 """
 
 from infra.database import Database
@@ -24,24 +29,20 @@ from infra.database import Database
 
 class AbrigoModel(Database):
     """
-    Gerencia o cadastro de abrigos e suas vagas disponíveis em tempo real.
+    Gerencia o cadastro de abrigos e o contador de vagas disponíveis.
     """
 
     @classmethod
     def criar(cls, dados: dict) -> dict | None:
         """
-        Cadastra um novo abrigo no sistema.
+        Cadastra um novo abrigo e popula automaticamente suas camas em vaga_cama.
 
         Args:
-            dados (dict): Dados do abrigo.
-                          Obrigatórios: 'nome', 'endereco', 'capacidade_total'
+            dados (dict): Obrigatórios: 'nome', 'endereco', 'capacidade_total'
                           Opcionais: 'telefone'
 
         Returns:
             dict | None: Abrigo recém-criado.
-
-        Nota: vagas_disponiveis começa igual a capacidade_total.
-              O frontend não pode definir vagas_disponiveis diretamente.
         """
         nome = str(dados.get("nome") or "").strip()
         endereco = str(dados.get("endereco") or "").strip()
@@ -62,14 +63,16 @@ class AbrigoModel(Database):
         if telefone:
             telefone = str(telefone).strip() or None
 
-        query_insert = """
+        abrigo_id = cls.query(
+            """
             INSERT INTO abrigo (nome, endereco, capacidade_total, vagas_disponiveis, telefone)
             VALUES (%s, %s, %s, %s, %s)
-        """
-        # vagas_disponiveis começa igual a capacidade_total
-        params_insert = (nome, endereco, capacidade_total, capacidade_total, telefone)
+            """,
+            (nome, endereco, capacidade_total, capacidade_total, telefone),
+        )
 
-        abrigo_id = cls.query(query_insert, params_insert)
+        # Popula vaga_cama com todas as camas do abrigo recém-criado
+        VagaCamaModel.popular_camas(abrigo_id, capacidade_total)
 
         rows = cls.query("SELECT * FROM abrigo WHERE id_abrigo = %s", (abrigo_id,))
         return rows[0] if rows else None
@@ -77,13 +80,10 @@ class AbrigoModel(Database):
     @classmethod
     def listar(cls, apenas_com_vagas: bool = False) -> list[dict]:
         """
-        Lista todos os abrigos ativos.
+        Lista todos os abrigos ativos, ordenados por nome.
 
         Args:
-            apenas_com_vagas (bool): Se True, retorna apenas abrigos com vagas > 0.
-
-        Returns:
-            list[dict]: Lista de abrigos ordenada por nome.
+            apenas_com_vagas (bool): Se True, filtra apenas abrigos com vagas > 0.
         """
         if apenas_com_vagas:
             query = """
@@ -92,139 +92,330 @@ class AbrigoModel(Database):
                 ORDER BY nome
             """
         else:
-            query = """
-                SELECT * FROM abrigo
-                WHERE ativo = TRUE
-                ORDER BY nome
-            """
+            query = "SELECT * FROM abrigo WHERE ativo = TRUE ORDER BY nome"
 
-        rows = cls.query(query)
-        return rows or []
+        return cls.query(query) or []
 
     @classmethod
     def decrementar_vaga(cls, abrigo_id: int) -> bool:
         """
-        Decrementa vagas_disponiveis do abrigo em 1, somente se houver vagas.
-
-        Returns:
-            bool: True se decrementado, False se não havia vagas disponíveis.
+        Decrementa vagas_disponiveis em 1. Retorna False se não houver vagas.
         """
-        query = """
-            UPDATE abrigo
-            SET vagas_disponiveis = vagas_disponiveis - 1
-            WHERE id_abrigo = %s AND vagas_disponiveis > 0
-        """
-        # query() retorna [] para UPDATE — precisamos saber se afetou alguma linha.
-        # Usamos uma verificação antes + depois para contornar a limitação do Database.query().
-        abrigo_antes = cls.query(
+        abrigo = cls.query(
             "SELECT vagas_disponiveis FROM abrigo WHERE id_abrigo = %s", (abrigo_id,)
         )
-        if not abrigo_antes or abrigo_antes[0]["vagas_disponiveis"] <= 0:
+        if not abrigo or abrigo[0]["vagas_disponiveis"] <= 0:
             return False
 
-        cls.query(query, (abrigo_id,))
+        cls.query(
+            """
+            UPDATE abrigo SET vagas_disponiveis = vagas_disponiveis - 1
+            WHERE id_abrigo = %s AND vagas_disponiveis > 0
+            """,
+            (abrigo_id,),
+        )
         return True
 
     @classmethod
     def incrementar_vaga(cls, abrigo_id: int) -> bool:
         """
-        Incrementa vagas_disponiveis do abrigo em 1, respeitando a capacidade total.
-
-        Returns:
-            bool: True se incrementado com sucesso.
+        Incrementa vagas_disponiveis em 1, respeitando a capacidade total.
         """
-        query = """
-            UPDATE abrigo
-            SET vagas_disponiveis = vagas_disponiveis + 1
+        cls.query(
+            """
+            UPDATE abrigo SET vagas_disponiveis = vagas_disponiveis + 1
             WHERE id_abrigo = %s AND vagas_disponiveis < capacidade_total
-        """
-        cls.query(query, (abrigo_id,))
+            """,
+            (abrigo_id,),
+        )
         return True
 
 
-class VagaModel(Database):
+class VagaCamaModel(Database):
     """
-    Gerencia as ocupações individuais de vagas em abrigos.
+    Gerencia o inventário de camas numeradas por abrigo.
 
-    Importante: entrada/saída NÃO requer prontuário,
-    mas REQUER que a pessoa já esteja cadastrada (US08, US09).
+    Cada cama tem número único dentro do abrigo e status: 'livre' ou 'ocupada'.
     """
 
     @classmethod
-    def _buscar_por_id(cls, vaga_id: int) -> dict | None:
-        """Busca um registro de vaga pelo ID."""
-        rows = cls.query("SELECT * FROM vaga WHERE id_vaga = %s", (vaga_id,))
+    def popular_camas(cls, abrigo_id: int, capacidade_total: int) -> None:
+        """
+        Cria todas as camas de um abrigo recém-cadastrado (1 até capacidade_total).
+        Chamado automaticamente por AbrigoModel.criar().
+        """
+        for numero in range(1, capacidade_total + 1):
+            cls.query(
+                """
+                INSERT INTO vaga_cama (numero_cama_pk, id_abrigo_fk, status)
+                VALUES (%s, %s, 'livre')
+                """,
+                (numero, abrigo_id),
+            )
+
+    @classmethod
+    def alocar_cama(cls, abrigo_id: int) -> int | None:
+        """
+        Encontra a primeira cama livre do abrigo e a marca como 'ocupada'.
+
+        Returns:
+            int | None: Número da cama alocada, ou None se não houver cama livre.
+        """
+        camas_livres = cls.query(
+            """
+            SELECT numero_cama_pk FROM vaga_cama
+            WHERE id_abrigo_fk = %s AND status = 'livre'
+            ORDER BY numero_cama_pk
+            LIMIT 1
+            """,
+            (abrigo_id,),
+        )
+        if not camas_livres:
+            return None
+
+        numero_cama = camas_livres[0]["numero_cama_pk"]
+
+        cls.query(
+            """
+            UPDATE vaga_cama SET status = 'ocupada'
+            WHERE numero_cama_pk = %s AND id_abrigo_fk = %s
+            """,
+            (numero_cama, abrigo_id),
+        )
+        return numero_cama
+
+    @classmethod
+    def liberar_cama(cls, numero_cama: int, abrigo_id: int) -> None:
+        """Marca a cama como 'livre' após a saída da pessoa."""
+        cls.query(
+            """
+            UPDATE vaga_cama SET status = 'livre'
+            WHERE numero_cama_pk = %s AND id_abrigo_fk = %s
+            """,
+            (numero_cama, abrigo_id),
+        )
+
+    @classmethod
+    def listar_por_abrigo(cls, abrigo_id: int) -> list[dict]:
+        """Lista todas as camas de um abrigo com seus status, ordenadas por número."""
+        return (
+            cls.query(
+                """
+            SELECT numero_cama_pk, id_abrigo_fk, status
+            FROM vaga_cama
+            WHERE id_abrigo_fk = %s
+            ORDER BY numero_cama_pk
+            """,
+                (abrigo_id,),
+            )
+            or []
+        )
+
+
+class EstadiaModel(Database):
+    """
+    Gerencia a ocupação de camas específicas por pessoas (US08, US09).
+
+    Entrada/saída NÃO requer prontuário, mas REQUER pessoa cadastrada.
+    """
+
+    @classmethod
+    def _buscar_ativa_por_pessoa(cls, pessoa_id: int) -> dict | None:
+        """Retorna a estadia ativa (sem data_saida) da pessoa, se houver."""
+        rows = cls.query(
+            """
+            SELECT * FROM estadia
+            WHERE id_pessoa_rua_fk = %s AND data_saida IS NULL
+            ORDER BY data_entrada_pk DESC
+            LIMIT 1
+            """,
+            (pessoa_id,),
+        )
+        return rows[0] if rows else None
+
+    @classmethod
+    def _buscar_ativa_por_cama(cls, numero_cama: int, abrigo_id: int) -> dict | None:
+        """Retorna a estadia ativa de uma cama específica, se houver."""
+        rows = cls.query(
+            """
+            SELECT * FROM estadia
+            WHERE numero_cama_fk = %s AND id_abrigo_fk = %s AND data_saida IS NULL
+            LIMIT 1
+            """,
+            (numero_cama, abrigo_id),
+        )
         return rows[0] if rows else None
 
     @classmethod
     def registrar_entrada(cls, pessoa_id: int, abrigo_id: int) -> dict | None:
         """
-        Registra a entrada de uma pessoa em um abrigo (US08).
+        Registra a entrada de uma pessoa em um abrigo, alocando uma cama (US08).
 
         Ordem de operações:
-          1. Verifica se a pessoa já está acolhida em algum abrigo.
-          2. Tenta decrementar a vaga do abrigo (falha se lotado).
-          3. Insere o registro na tabela `vaga`.
-
-        Returns:
-            dict | None: Registro da vaga criada.
+          1. Verifica se a pessoa já tem estadia ativa.
+          2. Aloca a primeira cama livre (VagaCamaModel.alocar_cama).
+          3. Decrementa o contador de vagas do abrigo.
+          4. Insere o registro em estadia.
 
         Raises:
-            ValueError: Se a pessoa já estiver acolhida em outro abrigo.
-            RuntimeError: Se o abrigo não tiver vagas disponíveis.
+            ValueError: Se a pessoa já tiver estadia ativa.
+            RuntimeError: Se não houver cama livre no abrigo.
         """
-        # 1. Pessoa já acolhida em algum abrigo?
-        vaga_ativa = cls.query(
-            "SELECT id_vaga FROM vaga WHERE pessoa_id = %s AND status = 'ocupada'",
-            (pessoa_id,),
-        )
-        if vaga_ativa:
+        # 1. Pessoa já acolhida?
+        if cls._buscar_ativa_por_pessoa(pessoa_id):
             raise ValueError(
                 "A pessoa já está acolhida em um abrigo. "
                 "Registre a saída antes de uma nova entrada."
             )
 
-        # 2. Tenta decrementar — já verifica disponibilidade internamente
-        if not AbrigoModel.decrementar_vaga(abrigo_id):
-            raise RuntimeError("O abrigo não possui vagas disponíveis no momento.")
+        # 2. Aloca cama livre
+        numero_cama = VagaCamaModel.alocar_cama(abrigo_id)
+        if numero_cama is None:
+            raise RuntimeError("O abrigo não possui camas disponíveis no momento.")
 
-        # 3. Insere o registro de ocupação
-        query_insert = """
-            INSERT INTO vaga (pessoa_id, abrigo_id, status)
-            VALUES (%s, %s, 'ocupada')
-        """
-        vaga_id = cls.query(query_insert, (pessoa_id, abrigo_id))
+        # 3. Atualiza contador do abrigo
+        AbrigoModel.decrementar_vaga(abrigo_id)
 
-        return cls._buscar_por_id(vaga_id)
-
-    @classmethod
-    def registrar_saida(cls, vaga_id: int) -> dict | None:
-        """
-        Registra a saída da pessoa do abrigo e libera a vaga (US09).
-
-        Returns:
-            dict | None: Vaga atualizada com status 'liberada',
-                         ou None se a vaga não existir ou já estiver liberada.
-        """
-        # 1. Busca a vaga — diferencia "não existe" de "já liberada"
-        vaga = cls._buscar_por_id(vaga_id)
-        if not vaga:
-            return None  # controller → 404
-
-        if vaga["status"] == "liberada":
-            return None  # controller → 409
-
-        # 2. Atualiza status e preenche saida_em
+        # 4. Registra a estadia
         cls.query(
             """
-            UPDATE vaga
-            SET status = 'liberada', saida_em = NOW()
-            WHERE id_vaga = %s AND status = 'ocupada'
+            INSERT INTO estadia (id_pessoa_rua_fk, numero_cama_fk, id_abrigo_fk)
+            VALUES (%s, %s, %s)
             """,
-            (vaga_id,),
+            (pessoa_id, numero_cama, abrigo_id),
         )
 
-        # 3. Devolve a vaga ao contador do abrigo
-        AbrigoModel.incrementar_vaga(vaga["abrigo_id"])
+        return cls._buscar_ativa_por_pessoa(pessoa_id)
 
-        return cls._buscar_por_id(vaga_id)
+    @classmethod
+    def registrar_saida_por_cama(
+        cls, numero_cama: int, abrigo_id: int, motivo_saida: str | None = None
+    ) -> dict | None:
+        """
+        Registra a saída pelo número da cama e abrigo (US09).
+
+        Args:
+            numero_cama (int): Número da cama sendo desocupada.
+            abrigo_id (int): ID do abrigo.
+            motivo_saida (str, optional): Motivo da saída.
+
+        Returns:
+            dict | None: Estadia encerrada, ou None se a cama não tiver estadia ativa.
+        """
+        estadia = cls._buscar_ativa_por_cama(numero_cama, abrigo_id)
+        if not estadia:
+            return None  # controller → 404
+
+        pessoa_id = estadia["id_pessoa_rua_fk"]
+
+        cls.query(
+            """
+            UPDATE estadia
+            SET data_saida = NOW(), motivo_saida = %s
+            WHERE id_pessoa_rua_fk = %s AND data_saida IS NULL
+            """,
+            (motivo_saida, pessoa_id),
+        )
+
+        VagaCamaModel.liberar_cama(numero_cama, abrigo_id)
+        AbrigoModel.incrementar_vaga(abrigo_id)
+
+        rows = cls.query(
+            """
+            SELECT * FROM estadia
+            WHERE id_pessoa_rua_fk = %s
+            ORDER BY data_entrada_pk DESC
+            LIMIT 1
+            """,
+            (pessoa_id,),
+        )
+        return rows[0] if rows else None
+
+    @classmethod
+    def registrar_saida(
+        cls, pessoa_id: int, motivo_saida: str | None = None
+    ) -> dict | None:
+        """
+        Registra a saída da pessoa, libera a cama e incrementa o contador (US09).
+
+        Args:
+            pessoa_id (int): ID da pessoa saindo.
+            motivo_saida (str, optional): Motivo da saída.
+
+        Returns:
+            dict | None: Estadia encerrada, ou None se não houver estadia ativa.
+        """
+        estadia = cls._buscar_ativa_por_pessoa(pessoa_id)
+        if not estadia:
+            return None  # controller → 404
+
+        # Encerra a estadia
+        cls.query(
+            """
+            UPDATE estadia
+            SET data_saida = NOW(), motivo_saida = %s
+            WHERE id_pessoa_rua_fk = %s AND data_saida IS NULL
+            """,
+            (motivo_saida, pessoa_id),
+        )
+
+        # Libera a cama
+        VagaCamaModel.liberar_cama(estadia["numero_cama_fk"], estadia["id_abrigo_fk"])
+
+        # Incrementa o contador
+        AbrigoModel.incrementar_vaga(estadia["id_abrigo_fk"])
+
+        rows = cls.query(
+            """
+            SELECT * FROM estadia
+            WHERE id_pessoa_rua_fk = %s
+            ORDER BY data_entrada_pk DESC
+            LIMIT 1
+            """,
+            (pessoa_id,),
+        )
+        return rows[0] if rows else None
+
+    @classmethod
+    def listar_por_pessoa(cls, pessoa_id: int) -> list[dict]:
+        """Histórico completo de estadias de uma pessoa, mais recente primeiro."""
+        return (
+            cls.query(
+                """
+            SELECT e.*, vc.status AS status_cama
+            FROM estadia e
+            JOIN vaga_cama vc
+              ON e.numero_cama_fk = vc.numero_cama_pk
+             AND e.id_abrigo_fk   = vc.id_abrigo_fk
+            WHERE e.id_pessoa_rua_fk = %s
+            ORDER BY e.data_entrada_pk DESC
+            """,
+                (pessoa_id,),
+            )
+            or []
+        )
+
+    @classmethod
+    def listar_por_abrigo(
+        cls, abrigo_id: int, apenas_ativas: bool = False
+    ) -> list[dict]:
+        """
+        Lista estadias de um abrigo.
+
+        Args:
+            abrigo_id (int): ID do abrigo.
+            apenas_ativas (bool): Se True, retorna só quem está acolhido agora.
+        """
+        if apenas_ativas:
+            query = """
+                SELECT * FROM estadia
+                WHERE id_abrigo_fk = %s AND data_saida IS NULL
+                ORDER BY data_entrada_pk DESC
+            """
+        else:
+            query = """
+                SELECT * FROM estadia
+                WHERE id_abrigo_fk = %s
+                ORDER BY data_entrada_pk DESC
+            """
+        return cls.query(query, (abrigo_id,)) or []
