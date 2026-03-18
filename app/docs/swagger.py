@@ -97,6 +97,10 @@ SWAGGER_TEMPLATE = {
             "description": "Cadastro provisório e gestão do nível de risco.",
         },
         {
+            "name": "Usuários",
+            "description": "Cadastro base de usuários (pessoa).",
+        },
+        {
             "name": "Consentimentos",
             "description": "Fluxos LGPD de consentimento e revogação.",
         },
@@ -187,6 +191,29 @@ SWAGGER_TEMPLATE = {
                     "enum": ["baixo", "medio", "alto", "critico"],
                     "example": "critico",
                 }
+            },
+        },
+        "Usuario": {
+            "type": "object",
+            "properties": {
+                "id_pessoa": {"type": "integer", "example": 1},
+                "nome": {"type": "string", "example": "Maria Souza"},
+                "senha": {"type": "string", "example": "senha123"},
+            },
+        },
+        "UsuarioCreateInput": {
+            "type": "object",
+            "required": ["nome", "senha"],
+            "properties": {
+                "nome": {"type": "string", "example": "Maria Souza"},
+                "senha": {"type": "string", "example": "senha123"},
+            },
+        },
+        "UsuarioUpdateInput": {
+            "type": "object",
+            "properties": {
+                "nome": {"type": "string", "example": "Maria Souza"},
+                "senha": {"type": "string", "example": "novaSenha123"},
             },
         },
         "Consentimento": {
@@ -475,12 +502,70 @@ SWAGGER_TEMPLATE = {
         },
         "/pessoas": {
             "post": {
+                "tags": ["Usuários"],
+                "summary": "Cria um usuário (pessoa).",
+                "parameters": [
+                    _body_param(
+                        "UsuarioCreateInput",
+                        "Dados obrigatórios para cadastro de pessoa.",
+                    )
+                ],
+                "responses": _default_responses(
+                    success={"201": _response("Pessoa criada com sucesso.", "Usuario")},
+                    with_bad_request=True,
+                ),
+            },
+            "get": {
+                "tags": ["Usuários"],
+                "summary": "Lista usuários cadastrados.",
+                "responses": _default_responses(
+                    success={
+                        "200": _array_response(
+                            "Lista de pessoas retornada com sucesso.",
+                            "Usuario",
+                        )
+                    }
+                ),
+            },
+        },
+        "/pessoas/{pessoa_id}": {
+            "get": {
+                "tags": ["Usuários"],
+                "summary": "Busca um usuário por ID.",
+                "parameters": [_path_param("pessoa_id", "ID da pessoa cadastrada.")],
+                "responses": _default_responses(
+                    success={
+                        "200": _response("Pessoa encontrada.", "Usuario"),
+                        "404": _response("Pessoa não encontrada.", "ErrorResponse"),
+                    }
+                ),
+            },
+            "put": {
+                "tags": ["Usuários"],
+                "summary": "Atualiza dados de um usuário.",
+                "parameters": [
+                    _path_param("pessoa_id", "ID da pessoa a atualizar."),
+                    _body_param(
+                        "UsuarioUpdateInput", "Campos permitidos para atualização."
+                    ),
+                ],
+                "responses": _default_responses(
+                    success={
+                        "200": _response("Pessoa atualizada com sucesso.", "Usuario"),
+                        "404": _response("Pessoa não encontrada.", "ErrorResponse"),
+                    },
+                    with_bad_request=True,
+                ),
+            },
+        },
+        "/pessoarua": {
+            "post": {
                 "tags": ["Pessoa em Situação de Rua"],
                 "summary": "Cria o cadastro provisório de uma pessoa.",
                 "description": (
                     "Ponto de entrada obrigatório da jornada da pessoa no sistema. "
                     "Por padrão, o nível de risco é definido como 'medio'. "
-                    "Se quiser alterar, use o endpoint PUT /pessoas/{id_pessoa_rua}/risco."
+                    "Se quiser alterar, use o endpoint PUT /pessoarua/{id_pessoa_rua}/risco."
                 ),
                 "parameters": [
                     _body_param(
@@ -514,7 +599,7 @@ SWAGGER_TEMPLATE = {
                 ),
             },
         },
-        "/pessoas/{id_pessoa_rua}": {
+        "/pessoarua/{id_pessoa_rua}": {
             "get": {
                 "tags": ["Pessoa em Situação de Rua"],
                 "summary": "Retorna uma pessoa pelo ID.",
@@ -551,7 +636,7 @@ SWAGGER_TEMPLATE = {
                 ),
             },
         },
-        "/pessoas/{id_pessoa_rua}/risco": {
+        "/pessoarua/{id_pessoa_rua}/risco": {
             "put": {
                 "tags": ["Pessoa em Situação de Rua"],
                 "summary": "Atualiza o nível de risco da pessoa.",
@@ -570,7 +655,7 @@ SWAGGER_TEMPLATE = {
                 ),
             }
         },
-        "/pessoas/filtros": {
+        "/pessoarua/filtros": {
             "get": {
                 "tags": ["Pessoa em Situação de Rua"],
                 "summary": "Lista pessoas com filtros opcionais.",
