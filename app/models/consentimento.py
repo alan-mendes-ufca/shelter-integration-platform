@@ -1,5 +1,5 @@
 from infra.database import Database  # noqa: F401 — usado nos TODOs abaixo
-from infra.erros import ValidationError
+from datetime import datetime, timedelta
 
 
 class ConsentimentoModel(Database):
@@ -11,24 +11,6 @@ class ConsentimentoModel(Database):
         2. GET  /consentimentos/:id → buscar_ativo() → verifica se ainda é True
         3. PUT  /consentimentos/:id/revogar → revogar() → ativo=FALSE, revogado_em=NOW()
     """
-
-    @staticmethod
-    def _validar_pessoa_id(pessoa_id: object) -> int:
-        try:
-            pessoa_id_int = int(pessoa_id)
-        except (TypeError, ValueError) as err:
-            raise ValidationError(
-                message="O campo 'pessoa_id' é obrigatório e deve ser numérico.",
-                action="Informe um ID de pessoa válido.",
-            ) from err
-
-        if pessoa_id_int <= 0:
-            raise ValidationError(
-                message="O campo 'pessoa_id' deve ser maior que zero.",
-                action="Informe um ID de pessoa válido.",
-            )
-
-        return pessoa_id_int
 
     @classmethod
     def criar(cls, dados: dict) -> dict | None:
@@ -42,30 +24,31 @@ class ConsentimentoModel(Database):
         - validade
 
         """
-        if not isinstance(dados, dict) or not dados:
-            raise ValidationError(
-                message="Body JSON inválido ou ausente.",
-                action="Envie um JSON válido no corpo da requisição.",
-            )
-
         #  Implementar
         observacao = dados.get("observacao")
-        pessoa_id = cls._validar_pessoa_id(dados.get("pessoa_id"))
+        pessoa_id = dados.get("pessoa_id")
+
+        if not pessoa_id:
+            raise ValueError(
+                "O ID da pessoa é obrigatório para registrar o consentimento"
+            )
+
+        data_atual = datetime.now()
+        data_validade = data_atual + timedelta(days=365)
 
         query_insert = """
-            INSERT INTO consentimento (id_pessoa_rua, ativo, observacao)
-            VALUES (%s, TRUE, %s)
+            INSERT INTO consentimento (pessoa_id, ativo, validade, observacao, data_assinatura)
+            VALUES (%s, True, %s, %s, CURRENT_TIMESTAMP)
         """
 
-        params_insert = (pessoa_id, observacao)
+        params_insert = (pessoa_id, data_validade, observacao)
         cls.query(query_insert, params_insert)
 
         return cls.buscar_ativo_por_pessoa(pessoa_id)
 
     @classmethod
     def buscar_ativo_por_pessoa(cls, pessoa_id: int) -> dict | None:
-        pessoa_id = cls._validar_pessoa_id(pessoa_id)
-        query = "SELECT * FROM consentimento WHERE id_pessoa_rua = %s AND ativo = TRUE"
+        query = "SELECT * FROM consentimento where pessoa_id = %s AND ativo is True  AND validade > NOW()"
         params = (pessoa_id,)
 
         rows = cls.query(query, params)
@@ -86,17 +69,16 @@ class ConsentimentoModel(Database):
         """
         # A query atualiza a linha específica daquela pessoa
         query_update = """
-            UPDATE consentimento
-            SET ativo = FALSE, observacao = %s, revogado_em = CURRENT_TIMESTAMP
-            WHERE id_pessoa_rua = %s AND ativo = TRUE
+            UPDATE consentimento 
+            SET ativo = False, observacao = %s 
+            WHERE pessoa_id = %s
         """
 
-        pessoa_id = cls._validar_pessoa_id(pessoa_id)
         params_update = (observacao, pessoa_id)
 
         cls.query(query_update, params_update)
 
-        query_select = "SELECT * FROM consentimento WHERE id_pessoa_rua = %s"
+        query_select = "SELECT * FROM consentimento WHERE pessoa_id = %s"
         rows = cls.query(query_select, (pessoa_id,))
 
         if rows:
@@ -111,22 +93,23 @@ class ConsentimentoModel(Database):
         O botão de emergência da LGPD.
         Muda o ativo para True imediatamente.
         """
+        data_atual = datetime.now()
+        data_validade = data_atual + timedelta(days=365)
         # A query atualiza a linha específica daquela pessoa
         query_update = """
-            UPDATE consentimento
+            UPDATE consentimento 
             SET ativo = True,
                 observacao = %s,
-                registrado_em = CURRENT_TIMESTAMP,
-                revogado_em = NULL
-            WHERE id_pessoa_rua = %s
+                validade = %s,
+                data_assinatura = CURRENT_TIMESTAMP
+            WHERE pessoa_id = %s
         """
 
-        pessoa_id = cls._validar_pessoa_id(pessoa_id)
-        params_update = (observacao, pessoa_id)
+        params_update = (observacao, data_validade, pessoa_id)
 
         cls.query(query_update, params_update)
 
-        query_select = "SELECT * FROM consentimento WHERE id_pessoa_rua = %s"
+        query_select = "SELECT * FROM consentimento WHERE pessoa_id = %s"
         rows = cls.query(query_select, (pessoa_id,))
 
         if rows:
@@ -139,8 +122,7 @@ class ConsentimentoModel(Database):
         Busca o estado bruto do consentimento da pessoa, não importa se está ativo,
         revogado ou vencido.
         """
-        pessoa_id = cls._validar_pessoa_id(pessoa_id)
-        query = "SELECT * FROM consentimento WHERE id_pessoa_rua = %s"
+        query = "SELECT * FROM consentimento WHERE pessoa_id = %s"
         rows = cls.query(query, (pessoa_id,))
 
         if rows:

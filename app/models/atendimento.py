@@ -1,138 +1,59 @@
+"""
+Model: Atendimento
+==================
+
+Estagiário, esse é o model do módulo mais simples e ao mesmo tempo mais
+importante operacionalmente: o registro de atendimentos.
+
+Por que é o mais simples? Porque não tem restrições complexas de consentimento.
+Por que é o mais importante? Porque é a base de tudo — todo encaminhamento
+obrigatoriamente tem um atendimento_id associado.
+
+Guarda bem essa frase: "Sem atendimento, não há encaminhamento."
+                        "Sem cadastro da pessoa, não há atendimento."
+"""
+
 from infra.database import Database  # noqa: F401 — usado nos TODOs abaixo
-from infra.erros import NotFoundError, ValidationError
-from .abrigo import AbrigoModel
-from .pessoa_rua import PessoaRuaModel
-from .profissional import ProfissionalModel
 
 
 class AtendimentoModel(Database):
-    TIPOS_ATENDIMENTO_VALIDOS = {
-        "escuta",
-        "alimentacao",
-        "banho",
-        "saude",
-        "juridico",
-        "outro",
-    }
+    """
+    Gerencia o registro de atendimentos diários (escuta, banho, alimentação, etc.).
+
+    Esse model nunca deve verificar consentimento — isso é responsabilidade
+    do controller de Prontuário quando for consolidar as informações.
+    Aqui, a regra é simples: se a pessoa existe, o atendimento pode ser criado.
+    """
 
     @classmethod
-    def _validar_dados_registro(cls, data: dict) -> None:
-        required_fields = {"id_pessoa_rua", "id_profissional", "id_abrigo", "tipo"}
-        optional_fields = {"observacoes"}
-        allowed_fields = required_fields | optional_fields
+    def register(cls, data: dict) -> dict | None:
+        """
+        Registra um novo atendimento no sistema (US04).
+        - Sempre possível, independente de consentimento ou prontuário.
 
-        if not data:
-            raise ValidationError(
-                message="Campos obrigatórios faltando ou extras presentes.",
-                action="Verifique se 'id_pessoa_rua', 'id_profissional', 'id_abrigo' e 'tipo' estão presentes e sem campos adicionais.",
-            )
+        Args:
+            dados (dict): Dados do atendimento.
+                          Obrigatórios: 'pessoa_id', 'profissional_id', 'tipo', 'unidade'
+                          Opcionais: 'observacoes', 'realizado_em'
 
-        data_keys = set(data.keys())
-        if not required_fields.issubset(data_keys) or not data_keys.issubset(
-            allowed_fields
-        ):
-            raise ValidationError(
-                message="Campos obrigatórios faltando ou extras presentes.",
-                action="Verifique se 'id_pessoa_rua', 'id_profissional', 'id_abrigo' e 'tipo' estão presentes e sem campos adicionais.",
-            )
-
-        if data["tipo"] not in cls.TIPOS_ATENDIMENTO_VALIDOS:
-            cls._raise_tipo_invalido()
-
-        cls._validar_abrigo(data.get("id_abrigo"))
-
-    @classmethod
-    def _validar_dados_atualizacao(cls, dados: dict) -> set[str]:
-        if not dados:
-            raise ValidationError(
-                message="Body JSON inválido ou ausente.",
-                action="Envie ao menos um campo para atualização.",
-            )
-
-        campos_permitidos = {"tipo", "id_abrigo", "observacoes"}
-        campos_invalidos = set(dados.keys()) - campos_permitidos
-        if campos_invalidos:
-            raise ValidationError(
-                message="Body contém campos não permitidos para atualização.",
-                action="Utilize somente os campos: 'tipo', 'id_abrigo', 'observacoes'.",
-            )
-
-        if "tipo" in dados and dados["tipo"] not in cls.TIPOS_ATENDIMENTO_VALIDOS:
-            cls._raise_tipo_invalido()
-
-        if "id_abrigo" in dados:
-            cls._validar_abrigo(dados.get("id_abrigo"))
-
-        return campos_permitidos
-
-    @staticmethod
-    def _raise_tipo_invalido() -> None:
-        raise ValidationError(
-            message="Campo de 'tipo' preenchido com opção inválida.",
-            action="Utilize somente uma das opção a seguir: 'escuta', 'alimentacao', 'banho', 'saude', 'juridico', 'outro'.",
-        )
-
-    @staticmethod
-    def _validar_abrigo(id_abrigo: object) -> int:
-        try:
-            abrigo_id = int(id_abrigo)
-        except (TypeError, ValueError) as err:
-            raise ValidationError(
-                message="O campo 'id_abrigo' deve ser um inteiro válido.",
-                action="Informe um id_abrigo existente e numérico.",
-            ) from err
-
-        abrigo = AbrigoModel.buscar_por_id(abrigo_id)
-        if not abrigo:
-            raise ValidationError(
-                message="Abrigo não encontrado.",
-                action="Informe um id_abrigo válido e ativo.",
-            )
-
-        return abrigo_id
-
-    @classmethod
-    def _buscar_atendimento_valido(cls, atendimento_id: int) -> dict:
-        atendimento_atual = cls.buscar_por_id(atendimento_id)
-        if not atendimento_atual:
-            raise NotFoundError(
-                message="Atendimento não encontrado.",
-                action="Verifique o ID informado.",
-            )
-        return atendimento_atual
-
-    @classmethod
-    def registrar(cls, data: dict) -> dict | None:
-        cls._validar_dados_registro(data)
-
-        pessoa_rua = PessoaRuaModel.buscar_por_id(int(data["id_pessoa_rua"]))
-        profissional = ProfissionalModel.buscar_por_id(int(data["id_profissional"]))
-        abrigo_id = cls._validar_abrigo(data.get("id_abrigo"))
-
-        if not pessoa_rua:
-            raise NotFoundError(
-                message="Pessoa em situação de rua não encontrada.",
-                action="Verifique o 'id_pessoa_rua' informado.",
-            )
-
-        if not profissional:
-            raise NotFoundError(
-                message="Profissional não encontrado.",
-                action="Verifique o 'id_profissional' informado.",
-            )
+        Returns:
+            dict | None: Atendimento recém-criado.
+        """
+        # TODO: Implementar
 
         query = """
-            INSERT INTO atendimento
-                (id_pessoa_rua, id_profissional, id_abrigo, tipo, observacoes)
-            VALUES
-                (%s, %s, %s, %s, %s);
+            INSERT INTO atendimento 
+                (pessoa_id, profissional_id, tipo, unidade, observacoes, realizado_em)
+            VALUES 
+                (%s, %s, %s, %s, %s, %s);
         """
         params = (
-            pessoa_rua["id_pessoa_rua"],
-            profissional["id_profissional"],
-            abrigo_id,
+            data["pessoa_id"],
+            data["profissional_id"],
             data["tipo"],
+            data["unidade"],
             data.get("observacoes", "Sem observações"),
+            data.get("realizado_em", ""),
         )
 
         lastrowid = cls.query(query, params)
@@ -142,100 +63,103 @@ class AtendimentoModel(Database):
         return result[0] if result else None
 
     @classmethod
-    def buscar_por_id(cls, atendimento_id: int) -> dict | None:
-        query = "SELECT * FROM atendimento WHERE id_atendimento = %s;"
-        result = cls.query(query, (atendimento_id,))
-        return result[0] if result else None
-
-    @classmethod
     def listar_por_pessoa(cls, pessoa_id: int) -> list[dict]:
-        query = """
-            SELECT
-                at.*,
-                pe.nome AS profissional_nome
-            FROM atendimento at
-            LEFT JOIN profissional pr
-                ON at.id_profissional = pr.id_profissional
-            LEFT JOIN pessoa pe
-                ON pr.id_pessoa = pe.id_pessoa
-            WHERE at.id_pessoa_rua = %s
-            ORDER BY at.realizado_em DESC;
         """
-        result = cls.query(query, (pessoa_id,))
-        return result or []
+        Lista todos os atendimentos de uma pessoa em ordem cronológica (US05).
+
+        Esse resultado é a base do histórico exibido no prontuário integrado,
+        quando o consentimento está ativo.
+
+        Args:
+            pessoa_id (int): ID da pessoa.
+
+        Returns:
+            list[dict]: Lista de atendimentos ordenados por `realizado_em` DESC.
+
+        TODO (estagiário): SELECT at.*, p.nome AS profissional_nome
+                           FROM atendimento at
+                           JOIN profissional p ON at.profissional_id = p.id
+                           WHERE at.pessoa_id = %s
+                           ORDER BY at.realizado_em DESC
+                           Tente fazer o JOIN para já trazer o nome do profissional.
+                           Isso evita N+1 queries no controller.
+        """
+        # TODO: Implementar
+        raise NotImplementedError(
+            "AtendimentoModel.listar_por_pessoa() ainda não foi implementado."
+        )
 
     @classmethod
-    def listar_por_abrigo_e_periodo(
-        cls, id_abrigo: int, data_inicio: str, data_fim: str
+    def listar_por_unidade_e_periodo(
+        cls, unidade: str, data_inicio: str, data_fim: str
     ) -> list[dict]:
-        abrigo_id = cls._validar_abrigo(id_abrigo)
-        query = """
-            SELECT *
-            FROM atendimento
-            WHERE id_abrigo = %s
-              AND realizado_em BETWEEN %s AND CONCAT(%s, ' 23:59:59')
-            ORDER BY realizado_em DESC;
         """
-        params = (abrigo_id, data_inicio, data_fim)
-        result = cls.query(query, params)
-        return result or []
+        Retorna atendimentos filtrados por unidade e período de datas.
 
-    @classmethod
-    def listar_filtrados(cls, filtros: dict) -> list[dict]:
-        id_abrigo_raw = str((filtros or {}).get("id_abrigo", "")).strip()
-        data_inicio = str((filtros or {}).get("data_inicio", "")).strip()
-        data_fim = str((filtros or {}).get("data_fim", "")).strip()
+        Usado para gerar estatísticas e relatórios operacionais da unidade.
 
-        if not id_abrigo_raw or not data_inicio or not data_fim:
-            raise ValidationError(
-                message="Parâmetros obrigatórios ausentes para filtragem.",
-                action="Envie 'id_abrigo', 'data_inicio' e 'data_fim' na query string.",
-            )
+        Args:
+            unidade (str): Nome ou parte do nome da unidade.
+            data_inicio (str): Data inicial no formato 'YYYY-MM-DD'.
+            data_fim (str): Data final no formato 'YYYY-MM-DD'.
 
-        try:
-            id_abrigo = int(id_abrigo_raw)
-        except ValueError as err:
-            raise ValidationError(
-                message="O parâmetro 'id_abrigo' deve ser numérico.",
-                action="Informe um id_abrigo inteiro e válido.",
-            ) from err
+        Returns:
+            list[dict]: Lista de atendimentos no período.
 
-        return cls.listar_por_abrigo_e_periodo(
-            id_abrigo=id_abrigo,
-            data_inicio=data_inicio,
-            data_fim=data_fim,
+        TODO (estagiário): Use BETWEEN para o período de datas.
+                           Exemplo: WHERE unidade LIKE %s AND realizado_em BETWEEN %s AND %s
+                           Lembra: o %s do LIKE deve receber f'%{unidade}%' como valor,
+                           não coloque o % dentro do placeholder.
+        """
+        # TODO: Implementar
+        raise NotImplementedError(
+            "AtendimentoModel.listar_por_unidade_e_periodo() ainda não foi implementado."
         )
 
     @classmethod
     def atualizar(cls, atendimento_id: int, dados: dict) -> dict | None:
-        cls._validar_dados_atualizacao(dados)
-        atendimento_atual = cls._buscar_atendimento_valido(atendimento_id)
-
-        atendimento_atualizado = {**atendimento_atual, **dados}
-        params = (
-            atendimento_atualizado["tipo"],
-            atendimento_atualizado["id_abrigo"],
-            atendimento_atualizado["observacoes"],
-            atendimento_id,
-        )
-
-        query = """
-            UPDATE atendimento
-            SET tipo = %s, id_abrigo = %s, observacoes = %s
-            WHERE id_atendimento = %s;
         """
+        Corrige dados de um atendimento registrado com erro.
 
-        cls.query(query, params)
+        Toda alteração deve ter um log de auditoria — o campo `atualizado_em`
+        é atualizado automaticamente pelo banco via ON UPDATE CURRENT_TIMESTAMP.
 
-        return cls.buscar_por_id(atendimento_id)
+        Args:
+            atendimento_id (int): ID do atendimento a corrigir.
+            dados (dict): Campos a atualizar.
+
+        Returns:
+            dict | None: Atendimento atualizado ou None se não encontrado.
+
+        TODO (estagiário): Implemente UPDATE + SELECT de retorno.
+                           No futuro, considere criar uma tabela de `audit_log`
+                           para registrar quem alterou o quê e quando.
+        """
+        # TODO: Implementar
+        raise NotImplementedError(
+            "AtendimentoModel.atualizar() ainda não foi implementado."
+        )
 
     @classmethod
     def deletar(cls, atendimento_id: int) -> bool:
+        """
+        Remove um atendimento registrado indevidamente.
 
-        atendimento = cls.buscar_por_id(atendimento_id)
-        if not atendimento:
-            return False
+        ATENÇÃO: Só deve ser chamado após verificação de permissão de gestor
+        no controller. Nunca exponha esse método sem autenticação.
 
-        query = "DELETE FROM atendimento WHERE id_atendimento = %s;"
-        cls.query(query, (atendimento_id,))
-        return True
+        Args:
+            atendimento_id (int): ID do atendimento a remover.
+
+        Returns:
+            bool: True se deletado com sucesso, False se não encontrado.
+
+        TODO (estagiário): DELETE FROM atendimento WHERE id = %s.
+                           Use cursor.rowcount para saber se alguma linha foi afetada.
+                           rowcount == 0 → não encontrado → controller retorna 404.
+                           rowcount == 1 → sucesso → controller retorna 204 No Content.
+        """
+        # TODO: Implementar
+        raise NotImplementedError(
+            "AtendimentoModel.deletar() ainda não foi implementado."
+        )

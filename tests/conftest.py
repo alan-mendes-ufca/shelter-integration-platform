@@ -13,6 +13,13 @@ DROP_SQL = ROOT_DIR / "infra" / "sql" / "002_drop_tables.sql"
 WEB_SERVER_URL = "http://127.0.0.1:5000/openapi.json"
 
 
+def _session_requires_web_server(request: pytest.FixtureRequest) -> bool:
+    return any(
+        "tests/test_post_atendimento.py" in item.nodeid
+        for item in request.session.items
+    )
+
+
 def _wait_for_web_server(timeout_seconds: int = 30):
     deadline = time.monotonic() + timeout_seconds
     last_error = None
@@ -40,5 +47,8 @@ def setup_database():
 
 
 @pytest.fixture(scope="session", autouse=True)
-def wait_for_web_server():
+def wait_for_web_server(request: pytest.FixtureRequest):
+    if not _session_requires_web_server(request):
+        return
+
     _wait_for_web_server()

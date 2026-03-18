@@ -7,47 +7,62 @@ Responsável por orquestrar as rotas HTTP para o prontuário social
 
 from flask import Blueprint, jsonify, request
 from app.models.prontuario import ProntuarioModel
-from infra.erros import InternalServerError, NotFoundError
 
 prontuarios_bp = Blueprint("prontuarios", __name__)
 
 
 @prontuarios_bp.route("", methods=["POST"])
 def criar_prontuario():
-    prontuario = ProntuarioModel.criar(request.get_json(silent=True))
+    dados = request.get_json(silent=True)
+    if not dados:
+        return jsonify({"erro": "Body JSON inválido ou ausente."}), 400
+
+    try:
+        prontuario = ProntuarioModel.criar(dados)
+    except ValueError as err:
+        return jsonify({"erro": str(err)}), 400
+    except Exception as err:
+        return jsonify({"erro": "Erro ao criar prontuário.", "detalhes": str(err)}), 500
 
     if not prontuario:
-        raise InternalServerError(
-            message="Falha na criação do prontuário.",
-            action="Tente novamente mais tarde.",
-        )
+        return jsonify({"erro": "Falha na criação."}), 500
 
     return jsonify(prontuario), 201
 
 
 @prontuarios_bp.route("/<int:id_pessoa_rua>", methods=["GET"])
 def buscar_prontuario(id_pessoa_rua: int):
-    prontuario = ProntuarioModel.buscar_por_id(id_pessoa_rua)
+    try:
+        prontuario = ProntuarioModel.buscar_por_id(id_pessoa_rua)
+    except Exception:
+        return jsonify({"erro": "Falha ao buscar prontuário."}), 500
 
     if not prontuario:
-        raise NotFoundError(
-            message="Prontuário não encontrado.",
-            action="Verifique o ID informado.",
-        )
+        return jsonify({"erro": "Prontuário não encontrado."}), 404
 
-    return jsonify(prontuario), 200
+    return jsonify(prontuario), 201
 
 
 @prontuarios_bp.route("/<int:id_pessoa_rua>", methods=["PUT"])
 def atualizar_prontuario(id_pessoa_rua: int):
-    prontuario_atualizado = ProntuarioModel.atualizar(
-        id_pessoa_rua, request.get_json(silent=True)
-    )
+    dados = request.get_json(silent=True)
+    if not dados:
+        return jsonify({"erro": "Body JSON inválido ou ausente."}), 400
 
-    if not prontuario_atualizado:
-        raise NotFoundError(
-            message="Prontuário não encontrado.",
-            action="Verifique o ID informado.",
-        )
+    try:
+        prontuario_atualizado = ProntuarioModel.atualizar(id_pessoa_rua, dados)
+        if not prontuario_atualizado:
+            return jsonify({"erro": "Prontuário não encontrado."}), 404
 
-    return jsonify(prontuario_atualizado), 200
+    except PermissionError as err:
+        return jsonify({"erro": str(err)}), 400
+
+    except ValueError as err:
+        return jsonify({"erro": str(err)}), 400
+
+    except Exception as err:
+        return jsonify(
+            {"erro": "Erro interno ao atualizar prontuário.", "detalhes": str(err)}
+        ), 500
+
+    return jsonify(prontuario_atualizado), 201

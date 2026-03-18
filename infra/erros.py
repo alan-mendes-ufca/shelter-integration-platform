@@ -23,12 +23,3 @@ class ValidationError(InternalServerError):
         self.name = "ValidationError"
         self.status_code = 400
         super().__init__(self.name, message, action, self.status_code)
-
-
-class NotFoundError(InternalServerError):
-    """Raised when a not found error occurs."""
-
-    def __init__(self, message, action):
-        self.name = "NotFoundError"
-        self.status_code = 404
-        super().__init__(self.name, message, action, self.status_code)
