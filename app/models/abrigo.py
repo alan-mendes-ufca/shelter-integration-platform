@@ -20,6 +20,7 @@ Decisões de design (divergências do DER original documentadas):
 """
 
 from infra.database import Database
+from infra.erros import NotFoundError, ValidationError
 
 
 class AbrigoModel(Database):
@@ -43,21 +44,46 @@ class AbrigoModel(Database):
         Nota: vagas_disponiveis começa igual a capacidade_total.
               O frontend não pode definir vagas_disponiveis diretamente.
         """
+        if not isinstance(dados, dict) or not dados:
+            raise ValidationError(
+                message="Body JSON inválido ou ausente.",
+                action="Envie um JSON válido no corpo da requisição.",
+            )
+
         nome = str(dados.get("nome") or "").strip()
         endereco = str(dados.get("endereco") or "").strip()
         capacidade_total = dados.get("capacidade_total")
         telefone = dados.get("telefone")
 
         if not nome:
-            raise ValueError("O campo 'nome' é obrigatório.")
+            raise ValidationError(
+                message="O campo 'nome' é obrigatório.",
+                action="Informe um nome válido para o abrigo.",
+            )
         if not endereco:
-            raise ValueError("O campo 'endereco' é obrigatório.")
+            raise ValidationError(
+                message="O campo 'endereco' é obrigatório.",
+                action="Informe um endereço válido para o abrigo.",
+            )
         if capacidade_total is None:
-            raise ValueError("O campo 'capacidade_total' é obrigatório.")
+            raise ValidationError(
+                message="O campo 'capacidade_total' é obrigatório.",
+                action="Informe a capacidade total do abrigo.",
+            )
 
-        capacidade_total = int(capacidade_total)
+        try:
+            capacidade_total = int(capacidade_total)
+        except (TypeError, ValueError) as err:
+            raise ValidationError(
+                message="'capacidade_total' deve ser numérico.",
+                action="Informe um inteiro positivo para 'capacidade_total'.",
+            ) from err
+
         if capacidade_total <= 0:
-            raise ValueError("'capacidade_total' deve ser um inteiro positivo.")
+            raise ValidationError(
+                message="'capacidade_total' deve ser um inteiro positivo.",
+                action="Informe um valor maior que zero para 'capacidade_total'.",
+            )
 
         if telefone:
             telefone = str(telefone).strip() or None
@@ -178,27 +204,39 @@ class VagaModel(Database):
             dict | None: Registro da vaga criada.
 
         Raises:
-            ValueError: Se a pessoa já estiver acolhida em outro abrigo.
-            RuntimeError: Se o abrigo não tiver vagas disponíveis.
+            ValidationError: Se os dados forem inválidos, a pessoa já estiver acolhida
+                             ou o abrigo estiver sem vagas.
         """
+        try:
+            pessoa_id = int(pessoa_id)
+            abrigo_id = int(abrigo_id)
+        except (TypeError, ValueError) as err:
+            raise ValidationError(
+                message="'pessoa_id' e 'abrigo_id' devem ser inteiros válidos.",
+                action="Informe IDs numéricos para pessoa e abrigo.",
+            ) from err
+
         # 1. Pessoa já acolhida em algum abrigo?
         vaga_ativa = cls.query(
-            "SELECT id_vaga FROM vaga WHERE pessoa_id = %s AND status = 'ocupada'",
+            "SELECT id_vaga FROM vaga WHERE id_pessoa_rua = %s AND status = 'ocupada'",
             (pessoa_id,),
         )
         if vaga_ativa:
-            raise ValueError(
-                "A pessoa já está acolhida em um abrigo. "
-                "Registre a saída antes de uma nova entrada."
+            raise ValidationError(
+                message="A pessoa já está acolhida em um abrigo.",
+                action="Registre a saída antes de uma nova entrada.",
             )
 
         # 2. Tenta decrementar — já verifica disponibilidade internamente
         if not AbrigoModel.decrementar_vaga(abrigo_id):
-            raise RuntimeError("O abrigo não possui vagas disponíveis no momento.")
+            raise ValidationError(
+                message="O abrigo não possui vagas disponíveis no momento.",
+                action="Escolha outro abrigo com vagas livres.",
+            )
 
         # 3. Insere o registro de ocupação
         query_insert = """
-            INSERT INTO vaga (pessoa_id, abrigo_id, status)
+            INSERT INTO vaga (id_pessoa_rua, abrigo_id, status)
             VALUES (%s, %s, 'ocupada')
         """
         vaga_id = cls.query(query_insert, (pessoa_id, abrigo_id))
@@ -217,10 +255,16 @@ class VagaModel(Database):
         # 1. Busca a vaga — diferencia "não existe" de "já liberada"
         vaga = cls._buscar_por_id(vaga_id)
         if not vaga:
-            return None  # controller → 404
+            raise NotFoundError(
+                message="Vaga não encontrada.",
+                action="Verifique o ID informado.",
+            )
 
         if vaga["status"] == "liberada":
-            return None  # controller → 409
+            raise ValidationError(
+                message="A saída desta vaga já foi registrada.",
+                action="Utilize uma vaga com status 'ocupada'.",
+            )
 
         # 2. Atualiza status e preenche saida_em
         cls.query(

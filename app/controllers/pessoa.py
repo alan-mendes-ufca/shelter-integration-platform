@@ -31,21 +31,14 @@ no model. O controller atua como camada de orquestração HTTP.
 from flask import Blueprint, jsonify, request  # noqa: F401
 
 from app.models.pessoa import PessoaModel  # noqa: F401
-from infra.erros import InternalServerError, NotFoundError, ValidationError
+from infra.erros import InternalServerError, NotFoundError
 
 pessoa_bp = Blueprint("pessoa", __name__)
 
 
 @pessoa_bp.route("", methods=["POST"])
 def cria_pessoa():
-    dados = request.get_json(silent=True)
-    if not dados:
-        raise ValidationError(
-            message="Body JSON inválido ou ausente.",
-            action="Envie um JSON válido no corpo da requisição.",
-        )
-
-    pessoa = PessoaModel.criar(dados)
+    pessoa = PessoaModel.criar(request.get_json(silent=True))
 
     if not pessoa:
         raise InternalServerError(
@@ -78,14 +71,7 @@ def listar_pessoas():
 
 @pessoa_bp.route("/<int:pessoa_id>", methods=["PUT"])
 def atualizar_pessoa(pessoa_id: int):
-    dados = request.get_json(silent=True)
-    if not dados:
-        raise ValidationError(
-            message="JSON inválido ou ausente.",
-            action="Envie um JSON válido no corpo da requisição.",
-        )
-
-    pessoa = PessoaModel.atualizar(pessoa_id, dados)
+    pessoa = PessoaModel.atualizar(pessoa_id, request.get_json(silent=True))
 
     if not pessoa:
         raise NotFoundError(

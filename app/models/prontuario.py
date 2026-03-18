@@ -1,4 +1,5 @@
 from infra.database import Database
+from infra.erros import ValidationError
 
 
 class ProntuarioModel(Database):
@@ -9,14 +10,21 @@ class ProntuarioModel(Database):
 
     @classmethod
     def criar(cls, dados: dict) -> dict | None:
+        if not isinstance(dados, dict) or not dados:
+            raise ValidationError(
+                message="Body JSON inválido ou ausente.",
+                action="Envie um JSON válido no corpo da requisição.",
+            )
+
         id_pessoa_rua = dados.get("id_pessoa_rua")
         id_consentimento = dados.get("id_consentimento")
         id_profissional = dados.get("id_profissional")
         resumo_historico = dados.get("resumo_historico", "")
 
         if not id_pessoa_rua or not id_consentimento or not id_profissional:
-            raise ValueError(
-                "Os campos id_pessoa_rua, id_consentimento e id_profissional são obrigatórios."
+            raise ValidationError(
+                message="Os campos id_pessoa_rua, id_consentimento e id_profissional são obrigatórios.",
+                action="Envie todos os campos obrigatórios para criação do prontuário.",
             )
 
         query_insert = """
@@ -37,8 +45,8 @@ class ProntuarioModel(Database):
     @classmethod
     def buscar_por_id(cls, id_pessoa_rua: int) -> dict | None:
         query_select = """
-            SELECT 
-                p.id_pessoa_rua, p.id_consentimento, p.id_profissional, 
+            SELECT
+                p.id_pessoa_rua, p.id_consentimento, p.id_profissional,
                 p.data_criacao, p.resumo_historico,
                 pr.apelido, pr.nivel_risco as grau_vulnerabilidade
             FROM prontuario p
@@ -53,6 +61,12 @@ class ProntuarioModel(Database):
 
     @classmethod
     def atualizar(cls, id_pessoa_rua: int, dados: dict) -> dict | None:
+        if not isinstance(dados, dict) or not dados:
+            raise ValidationError(
+                message="Body JSON inválido ou ausente.",
+                action="Envie um JSON válido no corpo da requisição.",
+            )
+
         prontuario_atual = cls.buscar_por_id(id_pessoa_rua)
         if not prontuario_atual:
             return None
@@ -61,8 +75,9 @@ class ProntuarioModel(Database):
 
         # MOCK PARA CONSENTIMENTO REVOGADO
         if id_consentimento_atual == 999:
-            raise PermissionError(
-                "Edição bloqueada: O morador de rua revogou o consentimento de uso de dados."
+            raise ValidationError(
+                message="Edição bloqueada: o consentimento de uso de dados foi revogado.",
+                action="Solicite novo consentimento antes de editar o prontuário.",
             )
 
         campos_prontuario = []
@@ -90,8 +105,9 @@ class ProntuarioModel(Database):
             niveis_validos = {"baixo", "medio", "alto", "critico"}
 
             if nivel_risco not in niveis_validos:
-                raise ValueError(
-                    f"grau_vulnerabilidade inválido. Valores aceitos: {sorted(niveis_validos)}"
+                raise ValidationError(
+                    message="grau_vulnerabilidade inválido.",
+                    action=f"Use um dos valores aceitos: {sorted(niveis_validos)}.",
                 )
 
             query_risco = (

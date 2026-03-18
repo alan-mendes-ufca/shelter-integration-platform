@@ -23,7 +23,7 @@ Regras gerais de retorno:
 from flask import Blueprint, request, jsonify
 from app.models.atendimento import AtendimentoModel
 from app.models.pessoa_rua import PessoaRuaModel
-from infra.erros import ValidationError, NotFoundError
+from infra.erros import NotFoundError
 
 atendimentos_bp = Blueprint("atendimentos", __name__, url_prefix="/atendimentos")
 
@@ -44,37 +44,7 @@ def listar_atendimentos_pessoa(pessoa_id: int):
 
 @atendimentos_bp.route("", methods=["GET"])
 def listar_atendimentos_por_filtro():
-    id_abrigo_raw = request.args.get("id_abrigo", "").strip()
-    data_inicio = request.args.get("data_inicio", "").strip()
-    data_fim = request.args.get("data_fim", "").strip()
-
-    if not id_abrigo_raw or not data_inicio or not data_fim:
-        raise ValidationError(
-            message="Parâmetros obrigatórios ausentes para filtragem.",
-            action="Envie 'id_abrigo', 'data_inicio' e 'data_fim' na query string.",
-        )
-
-    try:
-        id_abrigo = int(id_abrigo_raw)
-    except ValueError as err:
-        raise ValidationError(
-            message="O parâmetro 'id_abrigo' deve ser numérico.",
-            action="Informe um id_abrigo inteiro e válido.",
-        ) from err
-
-    try:
-        atendimentos = AtendimentoModel.listar_por_abrigo_e_periodo(
-            id_abrigo=id_abrigo,
-            data_inicio=data_inicio,
-            data_fim=data_fim,
-        )
-    except ValidationError:
-        raise
-    except Exception:
-        raise ValidationError(
-            message="Não foi possível filtrar os atendimentos com os parâmetros informados.",
-            action="Verifique os valores enviados para 'id_abrigo', 'data_inicio' e 'data_fim'.",
-        )
+    atendimentos = AtendimentoModel.listar_filtrados(request.args)
 
     return jsonify(atendimentos), 200
 

@@ -7,27 +7,14 @@ Responsável por orquestrar as rotas HTTP para o prontuário social
 
 from flask import Blueprint, jsonify, request
 from app.models.prontuario import ProntuarioModel
-from infra.erros import InternalServerError, NotFoundError, ValidationError
+from infra.erros import InternalServerError, NotFoundError
 
 prontuarios_bp = Blueprint("prontuarios", __name__)
 
 
 @prontuarios_bp.route("", methods=["POST"])
 def criar_prontuario():
-    dados = request.get_json(silent=True)
-    if not dados:
-        raise ValidationError(
-            message="Body JSON inválido ou ausente.",
-            action="Envie um JSON válido no corpo da requisição.",
-        )
-
-    try:
-        prontuario = ProntuarioModel.criar(dados)
-    except ValueError as err:
-        raise ValidationError(
-            message=str(err),
-            action="Revise os dados obrigatórios e tente novamente.",
-        ) from err
+    prontuario = ProntuarioModel.criar(request.get_json(silent=True))
 
     if not prontuario:
         raise InternalServerError(
@@ -53,26 +40,9 @@ def buscar_prontuario(id_pessoa_rua: int):
 
 @prontuarios_bp.route("/<int:id_pessoa_rua>", methods=["PUT"])
 def atualizar_prontuario(id_pessoa_rua: int):
-    dados = request.get_json(silent=True)
-    if not dados:
-        raise ValidationError(
-            message="Body JSON inválido ou ausente.",
-            action="Envie um JSON válido no corpo da requisição.",
-        )
-
-    try:
-        prontuario_atualizado = ProntuarioModel.atualizar(id_pessoa_rua, dados)
-    except PermissionError as err:
-        raise ValidationError(
-            message=str(err),
-            action="Verifique suas permissões e tente novamente.",
-        ) from err
-
-    except ValueError as err:
-        raise ValidationError(
-            message=str(err),
-            action="Revise os dados informados e tente novamente.",
-        ) from err
+    prontuario_atualizado = ProntuarioModel.atualizar(
+        id_pessoa_rua, request.get_json(silent=True)
+    )
 
     if not prontuario_atualizado:
         raise NotFoundError(

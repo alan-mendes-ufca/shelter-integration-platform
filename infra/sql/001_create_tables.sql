@@ -149,7 +149,6 @@ CREATE TABLE IF NOT EXISTS atendimento (
     tipo                ENUM('escuta','alimentacao','banho','saude','juridico','outro') NOT NULL,
     observacoes         TEXT,
     realizado_em        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    criado_em           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     atualizado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_atendimento_pessoa

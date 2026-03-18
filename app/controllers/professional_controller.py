@@ -8,21 +8,14 @@ no sistema, vinculando-os à tabela `pessoa`.
 from flask import Blueprint, jsonify, request
 
 from app.models.profissional import ProfissionalModel
-from infra.erros import InternalServerError, NotFoundError, ValidationError
+from infra.erros import InternalServerError, NotFoundError
 
 profissionais_bp = Blueprint("profissionais", __name__)
 
 
 @profissionais_bp.route("", methods=["POST"])
 def criar_profissional():
-    dados = request.get_json(silent=True)
-    if not dados:
-        raise ValidationError(
-            message="Body JSON inválido ou ausente.",
-            action="Envie um JSON válido no corpo da requisição.",
-        )
-
-    profissional = ProfissionalModel.criar(dados)
+    profissional = ProfissionalModel.criar(request.get_json(silent=True))
 
     if not profissional:
         raise InternalServerError(

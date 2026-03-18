@@ -109,6 +109,18 @@ class AtendimentoModel(Database):
         profissional = ProfissionalModel.buscar_por_id(int(data["id_profissional"]))
         abrigo_id = cls._validar_abrigo(data.get("id_abrigo"))
 
+        if not pessoa_rua:
+            raise NotFoundError(
+                message="Pessoa em situação de rua não encontrada.",
+                action="Verifique o 'id_pessoa_rua' informado.",
+            )
+
+        if not profissional:
+            raise NotFoundError(
+                message="Profissional não encontrado.",
+                action="Verifique o 'id_profissional' informado.",
+            )
+
         query = """
             INSERT INTO atendimento
                 (id_pessoa_rua, id_profissional, id_abrigo, tipo, observacoes)
@@ -167,6 +179,32 @@ class AtendimentoModel(Database):
         params = (abrigo_id, data_inicio, data_fim)
         result = cls.query(query, params)
         return result or []
+
+    @classmethod
+    def listar_filtrados(cls, filtros: dict) -> list[dict]:
+        id_abrigo_raw = str((filtros or {}).get("id_abrigo", "")).strip()
+        data_inicio = str((filtros or {}).get("data_inicio", "")).strip()
+        data_fim = str((filtros or {}).get("data_fim", "")).strip()
+
+        if not id_abrigo_raw or not data_inicio or not data_fim:
+            raise ValidationError(
+                message="Parâmetros obrigatórios ausentes para filtragem.",
+                action="Envie 'id_abrigo', 'data_inicio' e 'data_fim' na query string.",
+            )
+
+        try:
+            id_abrigo = int(id_abrigo_raw)
+        except ValueError as err:
+            raise ValidationError(
+                message="O parâmetro 'id_abrigo' deve ser numérico.",
+                action="Informe um id_abrigo inteiro e válido.",
+            ) from err
+
+        return cls.listar_por_abrigo_e_periodo(
+            id_abrigo=id_abrigo,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+        )
 
     @classmethod
     def atualizar(cls, atendimento_id: int, dados: dict) -> dict | None:

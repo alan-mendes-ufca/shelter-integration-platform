@@ -12,6 +12,12 @@ class ProfissionalModel(Database):
 
     @classmethod
     def criar(cls, dados: dict) -> dict | None:
+        if not isinstance(dados, dict) or not dados:
+            raise ValidationError(
+                message="Body JSON inválido ou ausente.",
+                action="Envie um JSON válido no corpo da requisição.",
+            )
+
         id_pessoa = dados.get("id_pessoa")
         cargo = dados.get("cargo")
         registro_conselho = dados.get("registro_conselho")

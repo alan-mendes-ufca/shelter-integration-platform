@@ -23,6 +23,12 @@ class PessoaRuaModel(Database):
 
     @classmethod
     def criar(cls, dados: dict) -> dict | None:
+        if not isinstance(dados, dict) or not dados:
+            raise ValidationError(
+                message="Body JSON inválido ou ausente.",
+                action="Envie um JSON válido no corpo da requisição.",
+            )
+
         descricao_fisica = dados.get("descricao_fisica")
         apelido = dados.get("apelido")
         cpf = dados.get("cpf_opcional")
@@ -88,7 +94,8 @@ class PessoaRuaModel(Database):
             return rows[0]
         else:
             raise NotFoundError(
-                {"message": "Usuário não encontrado.", "action": "Contate o suporte."}
+                message="Usuário não encontrado.",
+                action="Contate o suporte.",
             )
 
     @classmethod
@@ -107,6 +114,13 @@ class PessoaRuaModel(Database):
 
     @classmethod
     def buscar_por_apelido(cls, apelido: str) -> list[dict]:
+        apelido = (apelido or "").strip()
+        if not apelido:
+            raise ValidationError(
+                message="Parâmetro 'apelido' é obrigatório.",
+                action="Informe um valor para pesquisa por apelido.",
+            )
+
         termo = f"%{apelido}%"
         query = """
                 SELECT * FROM pessoa_rua
@@ -120,6 +134,12 @@ class PessoaRuaModel(Database):
 
     @classmethod
     def atualizar(cls, pessoa_id: int, dados: dict) -> dict | None:
+        if not isinstance(dados, dict) or not dados:
+            raise ValidationError(
+                message="Body JSON inválido ou ausente.",
+                action="Envie um JSON válido no corpo da requisição.",
+            )
+
         campos = []
         valores = []
         permitidos = ["apelido", "descricao_fisica", "nome_civil", "cpf_opcional"]
@@ -190,9 +210,9 @@ class PessoaRuaModel(Database):
         niveis_validos = {"baixo", "medio", "alto", "critico"}
 
         if nivel_risco not in niveis_validos:
-            raise ValueError(
-                f"nivel_risco inválido: '{nivel_risco}'."
-                f"Valores válidos: {sorted(niveis_validos)}"
+            raise ValidationError(
+                message=f"nivel_risco inválido: '{nivel_risco}'.",
+                action=f"Use um dos valores válidos: {sorted(niveis_validos)}.",
             )
 
         query_update = """
@@ -214,6 +234,12 @@ class PessoaRuaModel(Database):
         nivel_risco: str | None = None,
         cpf_opcional: str | None = None,
     ) -> list[dict]:
+        if nivel_risco and nivel_risco not in {"baixo", "medio", "alto", "critico"}:
+            raise ValidationError(
+                message="nivel_risco inválido.",
+                action="Use um dos valores: baixo, medio, alto ou critico.",
+            )
+
         query_base = "SELECT * FROM pessoa_rua"
         filtros = []
         valores = []
