@@ -1,10 +1,8 @@
 from flask import Blueprint, request, jsonify
 from app.models.encaminhamento import EncaminhamentoModel
 
-# O prefixo /api/v1/encaminhamentos já é definido no create_app
 encaminhamentos_bp = Blueprint("encaminhamentos", __name__)
 
-# Status permitidos no sistema
 STATUS_VALIDOS = {"pendente", "atendido", "resolvido", "cancelado"}
 
 
@@ -60,16 +58,15 @@ def criar_encaminhamento():
         return jsonify({"erro": f"Falha ao salvar: {str(e)}"}), 500
 
 
-# 2. LISTAR POR PESSOA (GET)
-@encaminhamentos_bp.route("/<int:pessoa_id>", methods=["GET"])
-def listar_encaminhamentos_pessoa(pessoa_id: int):
+@encaminhamentos_bp.route("/pessoa-rua/<int:id_pessoa_rua>", methods=["GET"])
+def listar_encaminhamentos_pessoa(id_pessoa_rua: int):
     """
-    Busca todos os encaminhamentos vinculados a uma pessoa específica.
+    Busca todos os encaminhamentos vinculados a uma pessoa específica (pessoa_rua).
     ---
     tags:
       - Encaminhamentos
     parameters:
-      - name: pessoa_id
+      - name: id_pessoa_rua
         in: path
         type: integer
         required: true
@@ -78,7 +75,7 @@ def listar_encaminhamentos_pessoa(pessoa_id: int):
         description: Lista de encaminhamentos encontrada.
     """
     try:
-        encaminhamentos = EncaminhamentoModel.listar_por_pessoa(pessoa_id)
+        encaminhamentos = EncaminhamentoModel.listar_por_pessoa(id_pessoa_rua)
         return jsonify(encaminhamentos), 200
     except Exception as e:
         return jsonify({"erro": f"Erro ao buscar histórico: {str(e)}"}), 500

@@ -18,13 +18,13 @@ class EncaminhamentoModel(Database):
         return Database.query(sql, params)
 
     @classmethod
-    def listar_por_pessoa(cls, pessoa_id: int) -> list[dict]:
+    def listar_por_pessoa(cls, id_pessoa_rua: int) -> list[dict]:
         sql = """
             SELECT e.* FROM encaminhamento e
             JOIN atendimento a ON e.id_atendimento_fk = a.id_atendimento
-            WHERE a.pessoa_id = %s
+            WHERE a.id_pessoa_rua = %s
         """
-        return Database.query(sql, (pessoa_id,))
+        return Database.query(sql, (id_pessoa_rua,))
 
     @classmethod
     def listar_por_status(cls, status: str) -> list[dict]:
