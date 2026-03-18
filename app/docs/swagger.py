@@ -301,7 +301,6 @@ SWAGGER_TEMPLATE = {
                 },
                 "unidade": {"type": "string", "example": "CREAS Centro"},
                 "observacoes": {"type": "string"},
-                "realizado_em": {"type": "string", "example": "2026-03-05 14:30"},
             },
         },
         "AtendimentoUpdateInput": {
@@ -320,7 +319,6 @@ SWAGGER_TEMPLATE = {
                 },
                 "unidade": {"type": "string"},
                 "observacoes": {"type": "string"},
-                "realizado_em": {"type": "string"},
             },
         },
         "Profissional": {

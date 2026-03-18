@@ -1,6 +1,7 @@
 import re
 
 from infra.database import Database
+from infra.erros import NotFoundError, ValidationError
 
 
 class PessoaRuaModel(Database):
@@ -28,16 +29,25 @@ class PessoaRuaModel(Database):
         nome_civil = dados.get("nome_civil")
 
         if not apelido or not str(apelido).strip():
-            raise ValueError("apelido é obrigatorio.")
+            raise ValidationError(
+                message="Apelido inválido, esse dados é obrigatório.",
+                action="Tente Novamente.",
+            )
 
         if not descricao_fisica or not str(descricao_fisica).strip():
-            raise ValueError("descricao_fisica é obrigatória.")
+            raise ValidationError(
+                message="Descrição física inválida, esse dados é obrigatório.",
+                action="Tente Novamente.",
+            )
 
         if cpf:
             cpf = re.sub(r"\D", "", str(cpf))
 
             if not cls.validar_cpf(cpf):
-                raise ValueError("cpf inválido")
+                raise ValidationError(
+                    message="CPF inválido, esse dados é obrigatório.",
+                    action="Tente Novamente.",
+                )
 
         if nome_civil is not None:
             nome_civil = str(nome_civil).strip()
@@ -77,7 +87,9 @@ class PessoaRuaModel(Database):
         if rows:
             return rows[0]
         else:
-            return None
+            raise NotFoundError(
+                {"message": "Usuário não encontrado.", "action": "Contate o suporte."}
+            )
 
     @classmethod
     def buscar_por_id(cls, pessoa_id: int) -> dict | None:
@@ -88,9 +100,10 @@ class PessoaRuaModel(Database):
 
         if rows:
             return rows[0]
-
         else:
-            return None
+            raise NotFoundError(
+                message="Usuário não encontrado.", action="Contate o suporte."
+            )
 
     @classmethod
     def buscar_por_apelido(cls, apelido: str) -> list[dict]:
@@ -116,13 +129,19 @@ class PessoaRuaModel(Database):
         if "apelido" in dados:
             apelido = (dados.get("apelido") or "").strip()
             if not apelido:
-                raise ValueError("apelido é obrigatorio")
+                raise ValidationError(
+                    message="Apelido inválido, esse dados é obrigatório.",
+                    action="Tente Novamente.",
+                )
             dados_tratados["apelido"] = apelido
 
         if "descricao_fisica" in dados:
             descricao_fisica = (dados.get("descricao_fisica") or "").strip()
             if not descricao_fisica:
-                raise ValueError("descricao_fisica é obrigatoria.")
+                raise ValidationError(
+                    message="Descrição física inválida, esse dados é obrigatório.",
+                    action="Tente Novamente.",
+                )
             dados_tratados["descricao_fisica"] = descricao_fisica
 
         if "nome_civil" in dados:
@@ -142,7 +161,10 @@ class PessoaRuaModel(Database):
             else:
                 cpf = re.sub(r"\D", "", str(cpf)).strip()
                 if not cls.validar_cpf(cpf):
-                    raise ValueError("cpf inválido")
+                    raise ValidationError(
+                        message="CPF inválido, esse dados é obrigatório.",
+                        action="Tente Novamente.",
+                    )
                 dados_tratados["cpf_opcional"] = cpf
 
         for campo in permitidos:

@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS pessoa_rua(
 -- Só bloqueia acesso ao prontuário (US02, US03).
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS consentimento (
+<<<<<<< HEAD
 
     pessoa_id   INT UNSIGNED PRIMARY KEY,
 
@@ -93,6 +94,18 @@ CREATE TABLE IF NOT EXISTS consentimento (
     CONSTRAINT fk_consentimento_pessoa_rua
         FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id_pessoa_rua)
         ON DELETE RESTRICT                             
+=======
+    id_consentimento INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
+    id_pessoa_rua        INT UNSIGNED    NOT NULL,
+    ativo            BOOLEAN         NOT NULL DEFAULT TRUE,   -- FALSE = revogado
+    registrado_em    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    revogado_em      DATETIME,                                -- Preenchido quando/se revogado (US03)
+    observacao       TEXT,                                    -- Contexto do consentimento ou revogação
+
+    CONSTRAINT fk_consentimento_pessoa
+        FOREIGN KEY (id_pessoa_rua) REFERENCES pessoa_rua(id_pessoa_rua)
+        ON DELETE RESTRICT                                   -- Não permite deletar pessoa com consentimento
+>>>>>>> 8ae58e4 (feat: implement `atendimento` model and controllers)
 );
 
 -- =============================================================================
@@ -124,22 +137,22 @@ CREATE TABLE IF NOT EXISTS prontuario (
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS atendimento (
     id_atendimento      INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
-    pessoa_id           INT UNSIGNED    NOT NULL,
-    profissional_id     INT UNSIGNED    NOT NULL,
+    id_pessoa_rua           INT UNSIGNED    NOT NULL,
+    id_profissional     INT UNSIGNED    NOT NULL,
     tipo                ENUM('escuta','alimentacao','banho','saude','juridico','outro') NOT NULL,
     unidade             VARCHAR(150)    NOT NULL,            -- Nome/localização da unidade de atendimento
     observacoes         TEXT,
     realizado_em        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     criado_em           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    atualizado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    atualizado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    -- CONSTRAINT fk_atendimento_pessoa
-    --     FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id_pessoa_rua)
-    --     ON DELETE RESTRICT,
+    CONSTRAINT fk_atendimento_pessoa
+        FOREIGN KEY (id_pessoa_rua) REFERENCES pessoa_rua(id_pessoa_rua)
+        ON DELETE RESTRICT,
 
-    -- CONSTRAINT fk_atendimento_profissional
-    --     FOREIGN KEY (profissional_id) REFERENCES profissional(id_profissional)
-    --     ON DELETE RESTRICT
+    CONSTRAINT fk_atendimento_profissional
+        FOREIGN KEY (id_profissional) REFERENCES profissional(id_profissional)
+        ON DELETE RESTRICT
 );
 
 -- =============================================================================
@@ -171,14 +184,14 @@ CREATE TABLE IF NOT EXISTS abrigo (
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS vaga (
     id_vaga         INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
-    pessoa_id       INT UNSIGNED    NOT NULL,
+    id_pessoa_rua       INT UNSIGNED    NOT NULL,
     abrigo_id       INT UNSIGNED    NOT NULL,
     status          ENUM('ocupada','liberada') NOT NULL DEFAULT 'ocupada',
     entrada_em      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     saida_em        DATETIME,                               -- Preenchido no PUT /vagas/:id/saida
 
     CONSTRAINT fk_vaga_pessoa
-        FOREIGN KEY (pessoa_id) REFERENCES pessoa_rua(id_pessoa_rua)
+        FOREIGN KEY (id_pessoa_rua) REFERENCES pessoa_rua(id_pessoa_rua)
         ON DELETE RESTRICT,
 
     CONSTRAINT fk_vaga_abrigo
@@ -228,16 +241,13 @@ CREATE TABLE IF NOT EXISTS historico_gestao (
         ON DELETE RESTRICT
 );
 
--- =============================================================================
--- ÍNDICES DE PERFORMANCE
--- Estagiário: índices aceleram buscas frequentes. Coloque-os nas colunas
--- que aparecem em WHERE, JOIN ou ORDER BY com frequência.
--- =============================================================================
-CREATE INDEX idx_pessoa_apelido        ON pessoa_rua(apelido);
-CREATE INDEX idx_pessoa_cpf            ON pessoa_rua(cpf_opcional);
-CREATE INDEX idx_consentimento_pessoa  ON consentimento(pessoa_id);
-CREATE INDEX idx_atendimento_pessoa    ON atendimento(pessoa_id);
-CREATE INDEX idx_atendimento_unidade   ON atendimento(unidade);
-CREATE INDEX idx_atendimento_data      ON atendimento(realizado_em);
-CREATE INDEX idx_encaminhamento_status ON encaminhamento(status_acompanhamento);
-CREATE INDEX idx_vaga_status           ON vaga(status);
+
+CREATE TABLE IF NOT EXISTS atuacao 
+(
+    id_profissional INT NOT NULL REFERENCES profissional(id_profissional),
+    id_abrigo INT NOT NULL REFERENCES abrigo(abrigo_id),
+    data_inicio DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    data_fim DATETIME,
+
+    PRIMARY KEY (id_profissional, id_abrigo)
+);
