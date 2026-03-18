@@ -23,7 +23,8 @@ from infra.handlers import register_error_handlers
 from .controllers.blueprint_example import blueprint_example
 
 # Controllers do sistema de atendimento
-from .controllers.pessoa_rua import pessoas_bp
+from .controllers.pessoa_rua import pessoarua_bp
+from .controllers.pessoa import pessoa_bp
 from .controllers.consentimentos import consentimentos_bp
 from .controllers.atendimentos import atendimentos_bp
 from .controllers.prontuarios import prontuarios_bp
@@ -56,8 +57,11 @@ def create_app():
 
     # ── Sistema de Atendimento ─────────────────────────────────────────────────
     app.register_blueprint(
-        pessoas_bp, url_prefix=f"{API_PREFIX}/pessoas"
+        pessoa_bp, url_prefix=f"{API_PREFIX}/pessoas"
     )  # GET/POST /pessoas
+    app.register_blueprint(
+        pessoarua_bp, url_prefix=f"{API_PREFIX}/pessoarua"
+    )  # GET/POST /pessoarua
     app.register_blueprint(
         consentimentos_bp, url_prefix=f"{API_PREFIX}/consentimentos"
     )  # GET/POST /consentimentos
