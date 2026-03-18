@@ -1,5 +1,4 @@
 from infra.database import Database  # noqa: F401 — usado nos TODOs abaixo
-from infra.erros import ValidationError
 
 
 class ProfissionalModel(Database):
@@ -12,27 +11,15 @@ class ProfissionalModel(Database):
 
     @classmethod
     def criar(cls, dados: dict) -> dict | None:
-        if not isinstance(dados, dict) or not dados:
-            raise ValidationError(
-                message="Body JSON inválido ou ausente.",
-                action="Envie um JSON válido no corpo da requisição.",
-            )
-
         id_pessoa = dados.get("id_pessoa")
         cargo = dados.get("cargo")
         registro_conselho = dados.get("registro_conselho")
 
         if not id_pessoa:
-            raise ValidationError(
-                message="O campo 'id_pessoa' é obrigatório.",
-                action="Informe um valor válido para 'id_pessoa'.",
-            )
+            raise ValueError("O campo 'id_pessoa' é OBRIGATÓRIO.")
 
         if not cargo or not str(cargo).strip():
-            raise ValidationError(
-                message="O campo 'cargo' é obrigatório.",
-                action="Informe um valor válido para 'cargo'.",
-            )
+            raise ValueError("O campo 'cargo' é OBRIGATÓRIO.")
 
         if registro_conselho:
             registro_conselho = str(registro_conselho).strip()
@@ -65,7 +52,7 @@ class ProfissionalModel(Database):
     def buscar_por_id(cls, profissional_id: int) -> dict | None:
 
         query = """
-            SELECT p.id_profissional, p.id_pessoa, pe.nome, p.cargo, p.registro_conselho
+            SELECT p.id_profissional, p.id_pessoa, pe.nome, p.cargo, p.registro_conselho 
             FROM profissional p
             INNER JOIN pessoa pe ON p.id_pessoa = pe.id_pessoa
             WHERE p.id_profissional = %s
@@ -80,7 +67,7 @@ class ProfissionalModel(Database):
     @classmethod
     def listar(cls) -> list[dict]:
         query = """
-            SELECT p.id_profissional, p.id_pessoa, pe.nome, p.cargo, p.registro_conselho
+            SELECT p.id_profissional, p.id_pessoa, pe.nome, p.cargo, p.registro_conselho 
             FROM profissional p
             INNER JOIN pessoa pe ON p.id_pessoa = pe.id_pessoa
             ORDER BY p.id_profissional DESC
