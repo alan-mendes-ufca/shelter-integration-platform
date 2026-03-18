@@ -42,6 +42,21 @@ CREATE TABLE IF NOT EXISTS pessoa(
     nome VARCHAR(120) NOT NULL,
     senha VARCHAR(255) NOT NULL
     );
+
+-- =============================================================================
+-- TABELA: gestor
+-- Representa os gestores responsáveis por gerirem os abrigos
+-- que operam o sistema. Todo atendimento e encaminhamento precisa ter
+-- um profissional responsável para manter rastreabilidade.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS gestor (
+    id_gestor INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    id_pessoa INT UNSIGNED NOT NULL,
+    instituicao VARCHAR(50),
+
+    FOREIGN KEY (id_pessoa) REFERENCES pessoa(id_pessoa) ON DELETE CASCADE
+);
+
 -- =============================================================================
 -- TABELA: profissional
 -- Representa os assistentes sociais, educadores e demais profissionais
