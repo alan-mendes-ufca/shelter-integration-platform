@@ -197,30 +197,40 @@ CREATE TABLE IF NOT EXISTS vaga (
 -- =============================================================================
 -- TABELA: encaminhamento
 -- Formaliza a ponte entre o sistema e a rede externa (CRAS, CREAS, UBS, etc.).
--- Dois tipos:
---   - FORMAL:     prontuario_id preenchido → dados completos
---   - EMERGÊNCIA: prontuario_id NULL → sem consentimento, dados mínimos
--- Sempre exige um atendimento registrado (US10).
+-- Ajustada para corresponder exatamente ao diagrama lógico.
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS encaminhamento (
-    id_encaminhamento   INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
-    atendimento_id      INT UNSIGNED    NOT NULL,            -- OBRIGATÓRIO em qualquer tipo
-    prontuario_id       INT UNSIGNED,                        -- NULL = encaminhamento de emergência
-    destino             VARCHAR(200)    NOT NULL,            -- Ex: "CRAS Vila Nova", "UBS Centro"
-    motivo              TEXT            NOT NULL,
-    status              ENUM('pendente','atendido','resolvido','cancelado') NOT NULL DEFAULT 'pendente',
-    tipo                ENUM('formal','emergencia') NOT NULL, -- Derivado de prontuario_id, mas salvo explicitamente
-    cancelamento_motivo TEXT,                                -- Preenchido apenas se status = 'cancelado'
-    criado_em           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    atualizado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    id_encaminhamento_pk    INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
+    id_atendimento_fk       INT UNSIGNED    NOT NULL,
+    orgaoDestino            VARCHAR(200)    NOT NULL,
+    motivo                  TEXT            NOT NULL,
+    prioridade              ENUM('baixa', 'media', 'alta') NOT NULL,
+    status_acompanhamento   ENUM('pendente', 'atendido', 'resolvido', 'cancelado') NOT NULL DEFAULT 'pendente',
 
     CONSTRAINT fk_encaminhamento_atendimento
-        FOREIGN KEY (atendimento_id) REFERENCES atendimento(id_atendimento)
+        FOREIGN KEY (id_atendimento_fk) REFERENCES atendimento(id_atendimento)
+        ON DELETE RESTRICT
+);
+
+-- =============================================================================
+-- TABELA: historico_gestao
+-- Registra quem comandou qual abrigo e em qual período.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS historico_gestao (
+    id_gestor_fk      INT UNSIGNED    NOT NULL,
+    id_abrigo_fk      INT UNSIGNED    NOT NULL,
+    data_inicio_pk    DATETIME        NOT NULL,
+    data_fim          DATETIME,
+
+    PRIMARY KEY (id_gestor_fk, id_abrigo_fk, data_inicio_pk),
+
+    CONSTRAINT fk_hist_gestao_pessoa
+        FOREIGN KEY (id_gestor_fk) REFERENCES pessoa(id_pessoa)
         ON DELETE RESTRICT,
 
-    CONSTRAINT fk_encaminhamento_prontuario
-        FOREIGN KEY (prontuario_id) REFERENCES prontuario(id_prontuario)
-        ON DELETE RESTRICT                                   -- NULL é permitido (ON DELETE RESTRICT só age se não for NULL)
+    CONSTRAINT fk_hist_gestao_abrigo
+        FOREIGN KEY (id_abrigo_fk) REFERENCES abrigo(id_abrigo)
+        ON DELETE RESTRICT
 );
 
 -- =============================================================================
@@ -234,5 +244,7 @@ CREATE INDEX idx_consentimento_pessoa  ON consentimento(pessoa_id);
 CREATE INDEX idx_atendimento_pessoa    ON atendimento(pessoa_id);
 CREATE INDEX idx_atendimento_unidade   ON atendimento(unidade);
 CREATE INDEX idx_atendimento_data      ON atendimento(realizado_em);
-CREATE INDEX idx_encaminhamento_status ON encaminhamento(status);
+CREATE INDEX idx_encaminhamento_status ON encaminhamento(status_acompanhamento);
 CREATE INDEX idx_vaga_status           ON vaga(status);
+CREATE INDEX idx_hist_gestao_abrigo    ON historico_gestao(id_abrigo_fk);
+CREATE INDEX idx_hist_gestao_fim       ON historico_gestao(data_fim);
