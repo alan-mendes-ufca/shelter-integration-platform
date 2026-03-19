@@ -57,7 +57,21 @@ class PessoaRuaModel(Database):
                     message="CPF inválido, não está de acordo com as normas formalizadas pela 'Receita Federal do Brasil'.",
                     action="Tente Novamente.",
                 )
+
+            cls._validar_cpf_unico(cpf)
+
         return cpf
+
+    @classmethod
+    def _validar_cpf_unico(cls, cpf: str) -> None:
+        pessoas = cls.listar_com_filtros(cpf_opcional=cpf)
+        if not pessoas:
+            return
+
+        raise ValidationError(
+            message="CPF já está sendo utilizado por outra pessoa.",
+            action="Informe um CPF diferente ou deixe o campo em branco.",
+        )
 
     @classmethod
     def _validar_cpf_atualizacao(cls, cpf: object) -> str | None:
@@ -203,9 +217,10 @@ class PessoaRuaModel(Database):
             )
 
         if "cpf_opcional" in dados:
-            dados_tratados["cpf_opcional"] = cls._validar_cpf_atualizacao(
-                dados.get("cpf_opcional")
-            )
+            cpf_tratado = cls._validar_cpf_atualizacao(dados.get("cpf_opcional"))
+            if cpf_tratado:
+                cls._validar_cpf_unico(cpf_tratado, pessoa_id)
+            dados_tratados["cpf_opcional"] = cpf_tratado
 
         for campo in permitidos:
             if campo in dados_tratados:
