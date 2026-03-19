@@ -133,9 +133,21 @@ SWAGGER_TEMPLATE = {
         "ErrorResponse": {
             "type": "object",
             "properties": {
-                "erro": {"type": "string", "example": "Endpoint não implementado."}
+                "name": {"type": "string", "example": "ValidationError"},
+                "message": {
+                    "type": "string",
+                    "example": "Body JSON inválido ou ausente.",
+                },
+                "action": {
+                    "type": "string",
+                    "example": "Envie um JSON válido no corpo da requisição.",
+                },
+                "status_code": {"type": "integer", "example": 400},
+                "erro": {
+                    "type": "string",
+                    "example": "Mensagem de erro legada retornada por alguns endpoints.",
+                },
             },
-            "required": ["erro"],
         },
         "HelloResponse": {
             "type": "object",
@@ -145,14 +157,14 @@ SWAGGER_TEMPLATE = {
         "Pessoa": {
             "type": "object",
             "properties": {
-                "id_pessoa_rua": {"type": "integer", "example": 42},
+                "id_pessoa_rua": {"type": "integer", "example": 2},
                 "apelido": {"type": "string", "example": "João do Chapéu"},
                 "descricao_fisica": {
                     "type": "string",
                     "example": "Homem, cerca de 50 anos",
                 },
                 "nome_civil": {"type": "string", "example": "João Silva"},
-                "cpf_opcional": {"type": "string", "example": "39053344705"},
+                "cpf_opcional": {"type": "string", "example": "814.246.060-20"},
                 "nivel_risco": {
                     "type": "string",
                     "enum": ["baixo", "medio", "alto", "critico"],
@@ -170,7 +182,7 @@ SWAGGER_TEMPLATE = {
                     "example": "Homem, cerca de 50 anos, chapéu preto",
                 },
                 "nome_civil": {"type": "string"},
-                "cpf_opcional": {"type": "string", "example": "39053344705"},
+                "cpf_opcional": {"type": "string", "example": "814.246.060-20"},
             },
         },
         "PessoaUpdateInput": {
@@ -219,9 +231,17 @@ SWAGGER_TEMPLATE = {
         "Consentimento": {
             "type": "object",
             "properties": {
-                "id": {"type": "integer", "example": 8},
-                "pessoa_id": {"type": "integer", "example": 42},
+                "id_consentimento": {"type": "integer", "example": 1},
+                "id_pessoa_rua": {"type": "integer", "example": 1},
                 "ativo": {"type": "boolean", "example": True},
+                "registrado_em": {
+                    "type": "string",
+                    "example": "2026-03-18 12:30:00",
+                },
+                "revogado_em": {
+                    "type": "string",
+                    "example": "2026-03-20 09:15:00",
+                },
                 "observacao": {
                     "type": "string",
                     "example": "Explicado o uso dos dados.",
@@ -232,7 +252,7 @@ SWAGGER_TEMPLATE = {
             "type": "object",
             "required": ["pessoa_id"],
             "properties": {
-                "pessoa_id": {"type": "integer", "example": 42},
+                "pessoa_id": {"type": "integer", "example": 2},
                 "observacao": {
                     "type": "string",
                     "example": "Pessoa concordou com o tratamento dos dados.",
@@ -251,17 +271,20 @@ SWAGGER_TEMPLATE = {
         "ConsentimentoStatusResponse": {
             "type": "object",
             "properties": {
-                "ativo": {"type": "boolean", "example": True},
-                "consentimento": _schema("Consentimento"),
+                "status": {
+                    "type": "string",
+                    "example": "O consentimento está ativo.",
+                }
             },
-            "required": ["ativo"],
+            "required": ["status"],
         },
         "Atendimento": {
             "type": "object",
             "properties": {
-                "id": {"type": "integer", "example": 15},
-                "pessoa_id": {"type": "integer", "example": 42},
-                "profissional_id": {"type": "integer", "example": 7},
+                "id_atendimento": {"type": "integer", "example": 15},
+                "id_pessoa_rua": {"type": "integer", "example": 2},
+                "id_profissional": {"type": "integer", "example": 7},
+                "id_abrigo": {"type": "integer", "example": 3},
                 "tipo": {
                     "type": "string",
                     "enum": [
@@ -274,7 +297,6 @@ SWAGGER_TEMPLATE = {
                     ],
                     "example": "escuta",
                 },
-                "unidade": {"type": "string", "example": "CREAS Centro"},
                 "observacoes": {
                     "type": "string",
                     "example": "Pessoa relatou necessidade de benefício.",
@@ -284,10 +306,11 @@ SWAGGER_TEMPLATE = {
         },
         "AtendimentoCreateInput": {
             "type": "object",
-            "required": ["pessoa_id", "profissional_id", "tipo", "unidade"],
+            "required": ["id_pessoa_rua", "id_profissional", "id_abrigo", "tipo"],
             "properties": {
-                "pessoa_id": {"type": "integer", "example": 42},
-                "profissional_id": {"type": "integer", "example": 7},
+                "id_pessoa_rua": {"type": "integer", "example": 2},
+                "id_profissional": {"type": "integer", "example": 7},
+                "id_abrigo": {"type": "integer", "example": 3},
                 "tipo": {
                     "type": "string",
                     "enum": [
@@ -300,9 +323,7 @@ SWAGGER_TEMPLATE = {
                     ],
                     "example": "alimentacao",
                 },
-                "unidade": {"type": "string", "example": "CREAS Centro"},
                 "observacoes": {"type": "string"},
-                "realizado_em": {"type": "string", "example": "2026-03-05 14:30"},
             },
         },
         "AtendimentoUpdateInput": {
@@ -319,9 +340,8 @@ SWAGGER_TEMPLATE = {
                         "outro",
                     ],
                 },
-                "unidade": {"type": "string"},
+                "id_abrigo": {"type": "integer"},
                 "observacoes": {"type": "string"},
-                "realizado_em": {"type": "string"},
             },
         },
         "Profissional": {
@@ -413,20 +433,19 @@ SWAGGER_TEMPLATE = {
         "VagaCama": {
             "type": "object",
             "properties": {
-                "numero_cama_pk": {"type": "integer", "example": 3},
-                "id_abrigo_fk": {"type": "integer", "example": 1},
-                "status": {
-                    "type": "string",
-                    "enum": ["livre", "ocupada"],
-                    "example": "ocupada",
-                },
+                "id_vaga": {"type": "integer", "example": 21},
+                "id_pessoa_rua": {"type": "integer", "example": 2},
+                "abrigo_id": {"type": "integer", "example": 3},
+                "status": {"type": "string", "example": "ocupada"},
+                "entrada_em": {"type": "string", "example": "2026-03-05 18:10"},
+                "saida_em": {"type": "string", "example": "2026-03-06 08:00"},
             },
         },
         # ── Estadia ───────────────────────────────────────────────────────────
         "Estadia": {
             "type": "object",
             "properties": {
-                "id_pessoa_rua_fk": {"type": "integer", "example": 42},
+                "id_pessoa_rua_fk": {"type": "integer", "example": 2},
                 "data_entrada_pk": {"type": "string", "example": "2026-03-18 20:49:53"},
                 "numero_cama_fk": {"type": "integer", "example": 3},
                 "id_abrigo_fk": {"type": "integer", "example": 1},
@@ -441,7 +460,7 @@ SWAGGER_TEMPLATE = {
             "type": "object",
             "required": ["pessoa_id", "abrigo_id"],
             "properties": {
-                "pessoa_id": {"type": "integer", "example": 42},
+                "pessoa_id": {"type": "integer", "example": 2},
                 "abrigo_id": {"type": "integer", "example": 1},
             },
         },
@@ -743,10 +762,10 @@ SWAGGER_TEMPLATE = {
             },
             "get": {
                 "tags": ["Atendimentos"],
-                "summary": "Filtra atendimentos por unidade e período.",
+                "summary": "Filtra atendimentos por abrigo e período.",
                 "parameters": [
                     _query_param(
-                        "unidade", "Nome ou parte do nome da unidade.", required=True
+                        "id_abrigo", "ID do abrigo para filtragem.", required=True
                     ),
                     _query_param(
                         "data_inicio",

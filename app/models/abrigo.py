@@ -25,6 +25,7 @@ Implementar suporte a transações no Database.query() quando possível.
 """
 
 from infra.database import Database
+from infra.erros import ValidationError
 
 
 class AbrigoModel(Database):
@@ -44,21 +45,46 @@ class AbrigoModel(Database):
         Returns:
             dict | None: Abrigo recém-criado.
         """
+        if not isinstance(dados, dict) or not dados:
+            raise ValidationError(
+                message="Body JSON inválido ou ausente.",
+                action="Envie um JSON válido no corpo da requisição.",
+            )
+
         nome = str(dados.get("nome") or "").strip()
         endereco = str(dados.get("endereco") or "").strip()
         capacidade_total = dados.get("capacidade_total")
         telefone = dados.get("telefone")
 
         if not nome:
-            raise ValueError("O campo 'nome' é obrigatório.")
+            raise ValidationError(
+                message="O campo 'nome' é obrigatório.",
+                action="Informe um nome válido para o abrigo.",
+            )
         if not endereco:
-            raise ValueError("O campo 'endereco' é obrigatório.")
+            raise ValidationError(
+                message="O campo 'endereco' é obrigatório.",
+                action="Informe um endereço válido para o abrigo.",
+            )
         if capacidade_total is None:
-            raise ValueError("O campo 'capacidade_total' é obrigatório.")
+            raise ValidationError(
+                message="O campo 'capacidade_total' é obrigatório.",
+                action="Informe a capacidade total do abrigo.",
+            )
 
-        capacidade_total = int(capacidade_total)
+        try:
+            capacidade_total = int(capacidade_total)
+        except (TypeError, ValueError) as err:
+            raise ValidationError(
+                message="'capacidade_total' deve ser numérico.",
+                action="Informe um inteiro positivo para 'capacidade_total'.",
+            ) from err
+
         if capacidade_total <= 0:
-            raise ValueError("'capacidade_total' deve ser um inteiro positivo.")
+            raise ValidationError(
+                message="'capacidade_total' deve ser um inteiro positivo.",
+                action="Informe um valor maior que zero para 'capacidade_total'.",
+            )
 
         if telefone:
             telefone = str(telefone).strip() or None
@@ -95,6 +121,14 @@ class AbrigoModel(Database):
             query = "SELECT * FROM abrigo WHERE ativo = TRUE ORDER BY nome"
 
         return cls.query(query) or []
+
+    @classmethod
+    def buscar_por_id(cls, abrigo_id: int) -> dict | None:
+        """Busca um abrigo ativo pelo ID."""
+        rows = cls.query(
+            "SELECT * FROM abrigo WHERE id_abrigo = %s AND ativo = TRUE", (abrigo_id,)
+        )
+        return rows[0] if rows else None
 
     @classmethod
     def decrementar_vaga(cls, abrigo_id: int) -> bool:
