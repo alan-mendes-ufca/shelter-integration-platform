@@ -5,6 +5,8 @@ import re
 import mysql.connector
 from dotenv import load_dotenv
 
+from infra.erros import ConflictError, DatabaseError, ValidationError
+
 load_dotenv(".env.development")
 
 
@@ -84,7 +86,29 @@ class Database:
         except mysql.connector.Error as err:
             if client:
                 client.rollback()  # Rollback any changes if an error occurs
-            raise Exception(f"Database error: {err}") from err
+
+            if err.errno in (1216, 1452):
+                raise ValidationError(
+                    message="Registro referenciado não encontrado no banco de dados.",
+                    action="Verifique se os IDs informados existem antes de criar o registro.",
+                ) from err
+
+            if err.errno == 1062:
+                raise ConflictError(
+                    message="Já existe um registro com esses dados.",
+                    action="Verifique se o recurso já foi cadastrado.",
+                ) from err
+
+            if err.errno == 1048:
+                raise ValidationError(
+                    message=f"Campo obrigatório ausente: {err.msg}",
+                    action="Preencha todos os campos obrigatórios.",
+                ) from err
+
+            raise DatabaseError(
+                message=f"Erro inesperado no banco de dados: {err.msg}",
+                action="Tente novamente mais tarde.",
+            ) from err
 
         finally:
             if cursor:

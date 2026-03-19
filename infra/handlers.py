@@ -1,13 +1,22 @@
 from flask import jsonify
-from infra.erros import InternalServerError, ValidationError, NotFoundError
 from werkzeug.exceptions import HTTPException
+
+from infra.erros import (
+    ConflictError,
+    DatabaseError,
+    InternalServerError,
+    NotFoundError,
+    ValidationError,
+)
 
 
 def register_error_handlers(app):
     @app.errorhandler(Exception)
     def handle_unexpected_error(error):
 
-        if isinstance(error, ValidationError) or isinstance(error, NotFoundError):
+        if isinstance(
+            error, (ValidationError, NotFoundError, ConflictError, DatabaseError)
+        ):
             return jsonify(error.to_dict()), error.status_code
 
         if isinstance(error, HTTPException):
