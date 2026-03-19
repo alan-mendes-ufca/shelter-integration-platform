@@ -23,3 +23,35 @@ class ValidationError(InternalServerError):
         self.name = "ValidationError"
         self.status_code = 400
         super().__init__(self.name, message, action, self.status_code)
+
+
+class NotFoundError(InternalServerError):
+    """Raised when a not found error occurs."""
+
+    def __init__(self, message, action):
+        self.name = "NotFoundError"
+        self.status_code = 404
+        super().__init__(self.name, message, action, self.status_code)
+
+
+class ConflictError(InternalServerError):
+    """Raised when a conflict occurs (e.g. duplicate entry)."""
+
+    def __init__(self, message, action):
+        self.name = "ConflictError"
+        self.status_code = 409
+        super().__init__(self.name, message, action, self.status_code)
+
+
+class DatabaseError(InternalServerError):
+    """Raised when an unexpected database error occurs."""
+
+    def __init__(self, message=None, action=None):
+        self.name = "DatabaseError"
+        self.status_code = 500
+        super().__init__(
+            self.name,
+            message or "Erro ao acessar o banco de dados.",
+            action or "Tente novamente mais tarde.",
+            self.status_code,
+        )

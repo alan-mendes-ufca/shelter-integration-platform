@@ -19,7 +19,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS encaminhamento;
 DROP TABLE IF EXISTS estadia;       -- substitui vaga
 DROP TABLE IF EXISTS vaga_cama;     -- substitui vaga
-DROP TABLE IF EXISTS vaga;          -- tabela antiga, caso ainda exista
+DROP TABLE IF EXISTS atuacao;
 DROP TABLE IF EXISTS abrigo;
 DROP TABLE IF EXISTS atendimento;
 DROP TABLE IF EXISTS prontuario;

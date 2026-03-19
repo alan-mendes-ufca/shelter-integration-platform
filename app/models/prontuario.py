@@ -1,4 +1,5 @@
 from infra.database import Database
+from infra.erros import ValidationError
 
 
 class ProntuarioModel(Database):
@@ -7,17 +8,58 @@ class ProntuarioModel(Database):
     Gerencia o histórico de atendimento das pessoas em situação de rua.
     """
 
+    @staticmethod
+    def _validar_ids_obrigatorios_criacao(
+        id_pessoa_rua: object, id_consentimento: object, id_profissional: object
+    ) -> None:
+        if not id_pessoa_rua or not id_consentimento or not id_profissional:
+            raise ValidationError(
+                message="Os campos id_pessoa_rua, id_consentimento e id_profissional são obrigatórios.",
+                action="Envie todos os campos obrigatórios para criação do prontuário.",
+            )
+
+    @staticmethod
+    def _validar_consentimento_ativo(id_consentimento_atual: int) -> None:
+        if id_consentimento_atual == 999:
+            raise ValidationError(
+                message="Edição bloqueada: o consentimento de uso de dados foi revogado.",
+                action="Solicite novo consentimento antes de editar o prontuário.",
+            )
+
+    @staticmethod
+    def _validar_grau_vulnerabilidade(nivel_risco: str) -> str:
+        niveis_validos = {"baixo", "medio", "alto", "critico"}
+
+        if nivel_risco not in niveis_validos:
+            raise ValidationError(
+                message="grau_vulnerabilidade inválido.",
+                action=f"Use um dos valores aceitos: {sorted(niveis_validos)}.",
+            )
+
+        return nivel_risco
+
+    @classmethod
+    def _validar_pessoa_sem_prontuario(cls, id_pessoa_rua: object) -> None:
+        if cls.buscar_por_id(id_pessoa_rua):
+            raise ValidationError(
+                message="A pessoa informada já possui prontuário cadastrado.",
+                action="Utilize o endpoint de atualização para alterar o prontuário existente.",
+            )
+
     @classmethod
     def criar(cls, dados: dict) -> dict | None:
+
         id_pessoa_rua = dados.get("id_pessoa_rua")
         id_consentimento = dados.get("id_consentimento")
         id_profissional = dados.get("id_profissional")
         resumo_historico = dados.get("resumo_historico", "")
 
-        if not id_pessoa_rua or not id_consentimento or not id_profissional:
-            raise ValueError(
-                "Os campos id_pessoa_rua, id_consentimento e id_profissional são obrigatórios."
-            )
+        cls._validar_ids_obrigatorios_criacao(
+            id_pessoa_rua,
+            id_consentimento,
+            id_profissional,
+        )
+        cls._validar_pessoa_sem_prontuario(id_pessoa_rua)
 
         query_insert = """
             INSERT INTO prontuario (id_pessoa_rua, id_consentimento, id_profissional, resumo_historico)
@@ -37,8 +79,8 @@ class ProntuarioModel(Database):
     @classmethod
     def buscar_por_id(cls, id_pessoa_rua: int) -> dict | None:
         query_select = """
-            SELECT 
-                p.id_pessoa_rua, p.id_consentimento, p.id_profissional, 
+            SELECT
+                p.id_pessoa_rua, p.id_consentimento, p.id_profissional,
                 p.data_criacao, p.resumo_historico,
                 pr.apelido, pr.nivel_risco as grau_vulnerabilidade
             FROM prontuario p
@@ -53,6 +95,7 @@ class ProntuarioModel(Database):
 
     @classmethod
     def atualizar(cls, id_pessoa_rua: int, dados: dict) -> dict | None:
+
         prontuario_atual = cls.buscar_por_id(id_pessoa_rua)
         if not prontuario_atual:
             return None
@@ -60,10 +103,7 @@ class ProntuarioModel(Database):
         id_consentimento_atual = prontuario_atual["id_consentimento"]
 
         # MOCK PARA CONSENTIMENTO REVOGADO
-        if id_consentimento_atual == 999:
-            raise PermissionError(
-                "Edição bloqueada: O morador de rua revogou o consentimento de uso de dados."
-            )
+        cls._validar_consentimento_ativo(id_consentimento_atual)
 
         campos_prontuario = []
         valores_prontuario = []
@@ -86,13 +126,9 @@ class ProntuarioModel(Database):
             cls.query(query_prontuario, tuple(valores_prontuario))
 
         if "grau_vulnerabilidade" in dados:
-            nivel_risco = dados["grau_vulnerabilidade"]
-            niveis_validos = {"baixo", "medio", "alto", "critico"}
-
-            if nivel_risco not in niveis_validos:
-                raise ValueError(
-                    f"grau_vulnerabilidade inválido. Valores aceitos: {sorted(niveis_validos)}"
-                )
+            nivel_risco = cls._validar_grau_vulnerabilidade(
+                dados["grau_vulnerabilidade"]
+            )
 
             query_risco = (
                 "UPDATE pessoa_rua SET nivel_risco = %s WHERE id_pessoa_rua = %s"

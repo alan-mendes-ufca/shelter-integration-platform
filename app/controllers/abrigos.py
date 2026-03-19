@@ -42,18 +42,7 @@ def criar_abrigo():
         201 + abrigo criado
         400 se campos obrigatórios faltarem ou capacidade_total inválida
     """
-    dados = request.get_json(silent=True)
-    if not dados:
-        return jsonify({"erro": "Body JSON inválido ou ausente."}), 400
-
-    try:
-        abrigo = AbrigoModel.criar(dados)
-    except ValueError as err:
-        return jsonify({"erro": str(err)}), 400
-    except Exception as err:
-        return jsonify(
-            {"erro": "Erro interno ao criar abrigo.", "detalhes": str(err)}
-        ), 500
+    abrigo = AbrigoModel.criar(request.get_json(silent=True))
 
     if not abrigo:
         return jsonify({"erro": "Falha ao criar abrigo."}), 500
@@ -78,9 +67,10 @@ def listar_abrigos():
     try:
         abrigos = AbrigoModel.listar(apenas_com_vagas=apenas_com_vagas)
     except Exception as err:
-        return jsonify(
-            {"erro": "Erro interno ao listar abrigos.", "detalhes": str(err)}
-        ), 500
+        return (
+            jsonify({"erro": "Erro interno ao listar abrigos.", "detalhes": str(err)}),
+            500,
+        )
 
     return jsonify(abrigos), 200
 
@@ -102,9 +92,10 @@ def listar_camas(abrigo_id: int):
     try:
         camas = VagaCamaModel.listar_por_abrigo(abrigo_id)
     except Exception as err:
-        return jsonify(
-            {"erro": "Erro interno ao listar camas.", "detalhes": str(err)}
-        ), 500
+        return (
+            jsonify({"erro": "Erro interno ao listar camas.", "detalhes": str(err)}),
+            500,
+        )
 
     return jsonify(camas), 200
 
@@ -137,9 +128,10 @@ def registrar_entrada():
     abrigo_id = dados.get("abrigo_id")
 
     if not pessoa_id or not abrigo_id:
-        return jsonify(
-            {"erro": "Os campos 'pessoa_id' e 'abrigo_id' são obrigatórios."}
-        ), 400
+        return (
+            jsonify({"erro": "Os campos 'pessoa_id' e 'abrigo_id' são obrigatórios."}),
+            400,
+        )
 
     try:
         estadia = EstadiaModel.registrar_entrada(int(pessoa_id), int(abrigo_id))
@@ -150,9 +142,12 @@ def registrar_entrada():
         # Sem camas livres
         return jsonify({"erro": str(err)}), 409
     except Exception as err:
-        return jsonify(
-            {"erro": "Erro interno ao registrar entrada.", "detalhes": str(err)}
-        ), 500
+        return (
+            jsonify(
+                {"erro": "Erro interno ao registrar entrada.", "detalhes": str(err)}
+            ),
+            500,
+        )
 
     return jsonify(estadia), 201
 
@@ -184,23 +179,28 @@ def registrar_saida():
     motivo_saida = dados.get("motivo_saida")
 
     if not numero_cama or not abrigo_id:
-        return jsonify(
-            {"erro": "Os campos 'numero_cama' e 'abrigo_id' são obrigatórios."}
-        ), 400
+        return (
+            jsonify(
+                {"erro": "Os campos 'numero_cama' e 'abrigo_id' são obrigatórios."}
+            ),
+            400,
+        )
 
     try:
         estadia = EstadiaModel.registrar_saida_por_cama(
             int(numero_cama), int(abrigo_id), motivo_saida
         )
     except Exception as err:
-        return jsonify(
-            {"erro": "Erro interno ao registrar saída.", "detalhes": str(err)}
-        ), 500
+        return (
+            jsonify({"erro": "Erro interno ao registrar saída.", "detalhes": str(err)}),
+            500,
+        )
 
     if not estadia:
-        return jsonify(
-            {"erro": "Nenhuma estadia ativa encontrada para essa cama."}
-        ), 404
+        return (
+            jsonify({"erro": "Nenhuma estadia ativa encontrada para essa cama."}),
+            404,
+        )
 
     return jsonify(estadia), 200
 
@@ -229,9 +229,12 @@ def listar_estadias():
     apenas_ativas = request.args.get("apenas_ativas", "").lower() == "true"
 
     if not pessoa_id and not abrigo_id:
-        return jsonify(
-            {"erro": "Informe ao menos 'pessoa_id' ou 'abrigo_id' como filtro."}
-        ), 400
+        return (
+            jsonify(
+                {"erro": "Informe ao menos 'pessoa_id' ou 'abrigo_id' como filtro."}
+            ),
+            400,
+        )
 
     try:
         if pessoa_id:
@@ -241,8 +244,9 @@ def listar_estadias():
                 abrigo_id, apenas_ativas=apenas_ativas
             )
     except Exception as err:
-        return jsonify(
-            {"erro": "Erro interno ao listar estadias.", "detalhes": str(err)}
-        ), 500
+        return (
+            jsonify({"erro": "Erro interno ao listar estadias.", "detalhes": str(err)}),
+            500,
+        )
 
     return jsonify(resultado), 200

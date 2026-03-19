@@ -1,6 +1,7 @@
 import re
 
 from infra.database import Database
+from infra.erros import NotFoundError, ValidationError
 
 
 class PessoaRuaModel(Database):
@@ -20,37 +21,117 @@ class PessoaRuaModel(Database):
     - nivel_risco
     """
 
+    @staticmethod
+    def _validar_apelido_obrigatorio(apelido: object) -> str:
+        if not apelido or not str(apelido).strip():
+            raise ValidationError(
+                message="Apelido inválido, esse dados é obrigatório.",
+                action="Tente Novamente.",
+            )
+        return str(apelido).strip()
+
+    @staticmethod
+    def _validar_descricao_fisica_obrigatoria(descricao_fisica: object) -> str:
+        if not descricao_fisica or not str(descricao_fisica).strip():
+            raise ValidationError(
+                message="Descrição física inválida, esse dados é obrigatório.",
+                action="Tente Novamente.",
+            )
+        return str(descricao_fisica).strip()
+
+    @staticmethod
+    def _normalizar_nome_civil(nome_civil: object) -> str | None:
+        if nome_civil is not None:
+            nome_civil = str(nome_civil).strip()
+            if not nome_civil:
+                return None
+            return nome_civil
+        return None
+
+    @classmethod
+    def _validar_cpf_criacao(cls, cpf: object) -> str | None:
+        if cpf:
+            cpf = re.sub(r"\D", "", str(cpf))
+            if not cls.validar_cpf(cpf):
+                raise ValidationError(
+                    message="CPF inválido, não está de acordo com as normas formalizadas pela 'Receita Federal do Brasil'.",
+                    action="Tente Novamente.",
+                )
+
+            cls._validar_cpf_unico(cpf)
+
+        return cpf
+
+    @classmethod
+    def _validar_cpf_unico(cls, cpf: str) -> None:
+        pessoas = cls.listar_com_filtros(cpf_opcional=cpf)
+        if not pessoas:
+            return
+
+        raise ValidationError(
+            message="CPF já está sendo utilizado por outra pessoa.",
+            action="Informe um CPF diferente ou deixe o campo em branco.",
+        )
+
+    @classmethod
+    def _validar_cpf_atualizacao(cls, cpf: object) -> str | None:
+        if cpf is None or not str(cpf).strip():
+            return None
+
+        cpf = re.sub(r"\D", "", str(cpf)).strip()
+        if not cls.validar_cpf(cpf):
+            raise ValidationError(
+                message="CPF inválido, não está de acordo com as normas formalizadas pela 'Receita Federal do Brasil'.",
+                action="Tente Novamente.",
+            )
+        return cpf
+
+    @staticmethod
+    def _validar_nivel_risco_atualizacao(nivel_risco: str) -> str:
+        niveis_validos = {"baixo", "medio", "alto", "critico"}
+        if nivel_risco not in niveis_validos:
+            raise ValidationError(
+                message=f"nivel_risco inválido: '{nivel_risco}'.",
+                action=f"Use um dos valores válidos: {sorted(niveis_validos)}.",
+            )
+        return nivel_risco
+
+    @staticmethod
+    def _validar_nivel_risco_filtro(nivel_risco: str | None) -> None:
+        if nivel_risco and nivel_risco not in {"baixo", "medio", "alto", "critico"}:
+            raise ValidationError(
+                message="nivel_risco inválido.",
+                action="Use um dos valores: baixo, medio, alto ou critico.",
+            )
+
+    @staticmethod
+    def _validar_apelido_busca(apelido: str) -> str:
+        apelido = (apelido or "").strip()
+        if not apelido:
+            raise ValidationError(
+                message="Parâmetro 'apelido' é obrigatório.",
+                action="Informe um valor para pesquisa por apelido.",
+            )
+        return apelido
+
     @classmethod
     def criar(cls, dados: dict) -> dict | None:
+
         descricao_fisica = dados.get("descricao_fisica")
         apelido = dados.get("apelido")
         cpf = dados.get("cpf_opcional")
         nome_civil = dados.get("nome_civil")
 
-        if not apelido or not str(apelido).strip():
-            raise ValueError("apelido é obrigatorio.")
-
-        if not descricao_fisica or not str(descricao_fisica).strip():
-            raise ValueError("descricao_fisica é obrigatória.")
-
-        if cpf:
-            cpf = re.sub(r"\D", "", str(cpf))
-
-            if not cls.validar_cpf(cpf):
-                raise ValueError("cpf inválido")
-
-        if nome_civil is not None:
-            nome_civil = str(nome_civil).strip()
-            if not nome_civil:
-                nome_civil = None
+        apelido = cls._validar_apelido_obrigatorio(apelido)
+        descricao_fisica = cls._validar_descricao_fisica_obrigatoria(descricao_fisica)
+        cpf = cls._validar_cpf_criacao(cpf)
+        nome_civil = cls._normalizar_nome_civil(nome_civil)
 
         query_insert = """
             INSERT INTO pessoa_rua(apelido, descricao_fisica, nome_civil, cpf_opcional)
             VALUES (%s, %s, %s, %s)
         """
 
-        apelido = apelido.strip()
-        descricao_fisica = descricao_fisica.strip()
         params_insert = (
             apelido,
             descricao_fisica,
@@ -77,7 +158,10 @@ class PessoaRuaModel(Database):
         if rows:
             return rows[0]
         else:
-            return None
+            raise NotFoundError(
+                message="Usuário não encontrado.",
+                action="Contate o suporte.",
+            )
 
     @classmethod
     def buscar_por_id(cls, pessoa_id: int) -> dict | None:
@@ -88,12 +172,15 @@ class PessoaRuaModel(Database):
 
         if rows:
             return rows[0]
-
         else:
-            return None
+            raise NotFoundError(
+                message="Usuário não encontrado.", action="Contate o suporte."
+            )
 
     @classmethod
     def buscar_por_apelido(cls, apelido: str) -> list[dict]:
+        apelido = cls._validar_apelido_busca(apelido)
+
         termo = f"%{apelido}%"
         query = """
                 SELECT * FROM pessoa_rua
@@ -107,6 +194,7 @@ class PessoaRuaModel(Database):
 
     @classmethod
     def atualizar(cls, pessoa_id: int, dados: dict) -> dict | None:
+
         campos = []
         valores = []
         permitidos = ["apelido", "descricao_fisica", "nome_civil", "cpf_opcional"]
@@ -114,36 +202,25 @@ class PessoaRuaModel(Database):
         dados_tratados = {}
 
         if "apelido" in dados:
-            apelido = (dados.get("apelido") or "").strip()
-            if not apelido:
-                raise ValueError("apelido é obrigatorio")
-            dados_tratados["apelido"] = apelido
+            dados_tratados["apelido"] = cls._validar_apelido_obrigatorio(
+                dados.get("apelido")
+            )
 
         if "descricao_fisica" in dados:
-            descricao_fisica = (dados.get("descricao_fisica") or "").strip()
-            if not descricao_fisica:
-                raise ValueError("descricao_fisica é obrigatoria.")
-            dados_tratados["descricao_fisica"] = descricao_fisica
+            dados_tratados["descricao_fisica"] = (
+                cls._validar_descricao_fisica_obrigatoria(dados.get("descricao_fisica"))
+            )
 
         if "nome_civil" in dados:
-            nome_civil = dados.get("nome_civil")
-            if nome_civil is None:
-                dados_tratados["nome_civil"] = None
-
-            else:
-                nome_civil = str(nome_civil).strip()
-                dados_tratados["nome_civil"] = nome_civil or None
+            dados_tratados["nome_civil"] = cls._normalizar_nome_civil(
+                dados.get("nome_civil")
+            )
 
         if "cpf_opcional" in dados:
-            cpf = dados.get("cpf_opcional")
-            if cpf is None or not str(cpf).strip():
-                dados_tratados["cpf_opcional"] = None
-
-            else:
-                cpf = re.sub(r"\D", "", str(cpf)).strip()
-                if not cls.validar_cpf(cpf):
-                    raise ValueError("cpf inválido")
-                dados_tratados["cpf_opcional"] = cpf
+            cpf_tratado = cls._validar_cpf_atualizacao(dados.get("cpf_opcional"))
+            if cpf_tratado:
+                cls._validar_cpf_unico(cpf_tratado, pessoa_id)
+            dados_tratados["cpf_opcional"] = cpf_tratado
 
         for campo in permitidos:
             if campo in dados_tratados:
@@ -165,13 +242,7 @@ class PessoaRuaModel(Database):
 
     @classmethod
     def atualizar_risco(cls, pessoa_id: int, nivel_risco: str) -> dict | None:
-        niveis_validos = {"baixo", "medio", "alto", "critico"}
-
-        if nivel_risco not in niveis_validos:
-            raise ValueError(
-                f"nivel_risco inválido: '{nivel_risco}'."
-                f"Valores válidos: {sorted(niveis_validos)}"
-            )
+        nivel_risco = cls._validar_nivel_risco_atualizacao(nivel_risco)
 
         query_update = """
                 UPDATE pessoa_rua
@@ -192,6 +263,8 @@ class PessoaRuaModel(Database):
         nivel_risco: str | None = None,
         cpf_opcional: str | None = None,
     ) -> list[dict]:
+        cls._validar_nivel_risco_filtro(nivel_risco)
+
         query_base = "SELECT * FROM pessoa_rua"
         filtros = []
         valores = []

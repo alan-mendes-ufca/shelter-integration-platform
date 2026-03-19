@@ -42,20 +42,9 @@ def criar_encaminhamento():
       201:
         description: Encaminhamento registrado com sucesso!
     """
-    dados = request.get_json()
-    campos_obrigatorios = ["id_atendimento_fk", "orgaoDestino", "motivo", "prioridade"]
-
-    for campo in campos_obrigatorios:
-        if campo not in dados or not dados[campo]:
-            return jsonify({"erro": f"O campo '{campo}' é obrigatório."}), 400
-
-    try:
-        resultado = EncaminhamentoModel.criar(dados)
-        return jsonify(
-            {"mensagem": "Encaminhamento registrado com sucesso!", "id": resultado}
-        ), 201
-    except Exception as e:
-        return jsonify({"erro": f"Falha ao salvar: {str(e)}"}), 500
+    dados = request.get_json(silent=True)
+    resultado = EncaminhamentoModel.criar(dados)
+    return jsonify(resultado), 201
 
 
 @encaminhamentos_bp.route("/pessoa-rua/<int:id_pessoa_rua>", methods=["GET"])
@@ -100,17 +89,8 @@ def listar_por_status():
         description: Lista filtrada com sucesso.
     """
     status = request.args.get("status")
-
-    if not status or status not in STATUS_VALIDOS:
-        return jsonify(
-            {"erro": "Parâmetro 'status' é obrigatório e deve ser válido."}
-        ), 400
-
-    try:
-        resultado = EncaminhamentoModel.listar_por_status(status)
-        return jsonify(resultado), 200
-    except Exception as e:
-        return jsonify({"erro": f"Erro ao filtrar status: {str(e)}"}), 500
+    resultado = EncaminhamentoModel.listar_por_status(status)
+    return jsonify(resultado), 200
 
 
 # 4. ATUALIZAR STATUS (PUT)
@@ -141,24 +121,15 @@ def atualizar_status(encaminhamento_id: int):
       200:
         description: Status atualizado com sucesso.
     """
-    dados = request.get_json()
+    dados = request.get_json(silent=True) or {}
     novo_status = dados.get("status_acompanhamento")
 
-    if not novo_status or novo_status not in STATUS_VALIDOS:
-        return jsonify(
-            {"erro": "O campo 'status_acompanhamento' é obrigatório ou inválido."}
-        ), 400
+    if novo_status == "cancelado":
+        resultado = EncaminhamentoModel.cancelar(encaminhamento_id)
+    else:
+        resultado = EncaminhamentoModel.atualizar_status(encaminhamento_id, novo_status)
 
-    try:
-        if novo_status == "cancelado":
-            # Passe a variável renomeada para o Model
-            EncaminhamentoModel.cancelar(encaminhamento_id)
-        else:
-            EncaminhamentoModel.atualizar_status(encaminhamento_id, novo_status)
-
-        return jsonify({"mensagem": "Status atualizado com sucesso!"}), 200
-    except Exception as e:
-        return jsonify({"erro": f"Erro ao atualizar: {str(e)}"}), 500
+    return jsonify(resultado), 200
 
 
 # 5. CANCELAR ENCAMINHAMENTO (DELETE)
@@ -180,10 +151,5 @@ def cancelar_encaminhamento(encaminhamento_id: int):
       409:
         description: Não é permitido cancelar um item já processado.
     """
-    try:
-        resultado = EncaminhamentoModel.cancelar(encaminhamento_id)
-        if not resultado:
-            return jsonify({"erro": "Operação não permitida ou ID inexistente."}), 409
-        return jsonify({"mensagem": "Encaminhamento cancelado com sucesso!"}), 200
-    except Exception as e:
-        return jsonify({"erro": f"Erro ao cancelar: {str(e)}"}), 500
+    resultado = EncaminhamentoModel.cancelar(encaminhamento_id)
+    return jsonify(resultado), 200
