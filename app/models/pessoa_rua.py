@@ -21,52 +21,103 @@ class PessoaRuaModel(Database):
     - nivel_risco
     """
 
+    @staticmethod
+    def _validar_apelido_obrigatorio(apelido: object) -> str:
+        if not apelido or not str(apelido).strip():
+            raise ValidationError(
+                message="Apelido inválido, esse dados é obrigatório.",
+                action="Tente Novamente.",
+            )
+        return str(apelido).strip()
+
+    @staticmethod
+    def _validar_descricao_fisica_obrigatoria(descricao_fisica: object) -> str:
+        if not descricao_fisica or not str(descricao_fisica).strip():
+            raise ValidationError(
+                message="Descrição física inválida, esse dados é obrigatório.",
+                action="Tente Novamente.",
+            )
+        return str(descricao_fisica).strip()
+
+    @staticmethod
+    def _normalizar_nome_civil(nome_civil: object) -> str | None:
+        if nome_civil is not None:
+            nome_civil = str(nome_civil).strip()
+            if not nome_civil:
+                return None
+            return nome_civil
+        return None
+
+    @classmethod
+    def _validar_cpf_criacao(cls, cpf: object) -> str | None:
+        if cpf:
+            cpf = re.sub(r"\D", "", str(cpf))
+            if not cls.validar_cpf(cpf):
+                raise ValidationError(
+                    message="CPF inválido, não está de acordo com as normas formalizadas pela 'Receita Federal do Brasil'.",
+                    action="Tente Novamente.",
+                )
+        return cpf
+
+    @classmethod
+    def _validar_cpf_atualizacao(cls, cpf: object) -> str | None:
+        if cpf is None or not str(cpf).strip():
+            return None
+
+        cpf = re.sub(r"\D", "", str(cpf)).strip()
+        if not cls.validar_cpf(cpf):
+            raise ValidationError(
+                message="CPF inválido, não está de acordo com as normas formalizadas pela 'Receita Federal do Brasil'.",
+                action="Tente Novamente.",
+            )
+        return cpf
+
+    @staticmethod
+    def _validar_nivel_risco_atualizacao(nivel_risco: str) -> str:
+        niveis_validos = {"baixo", "medio", "alto", "critico"}
+        if nivel_risco not in niveis_validos:
+            raise ValidationError(
+                message=f"nivel_risco inválido: '{nivel_risco}'.",
+                action=f"Use um dos valores válidos: {sorted(niveis_validos)}.",
+            )
+        return nivel_risco
+
+    @staticmethod
+    def _validar_nivel_risco_filtro(nivel_risco: str | None) -> None:
+        if nivel_risco and nivel_risco not in {"baixo", "medio", "alto", "critico"}:
+            raise ValidationError(
+                message="nivel_risco inválido.",
+                action="Use um dos valores: baixo, medio, alto ou critico.",
+            )
+
+    @staticmethod
+    def _validar_apelido_busca(apelido: str) -> str:
+        apelido = (apelido or "").strip()
+        if not apelido:
+            raise ValidationError(
+                message="Parâmetro 'apelido' é obrigatório.",
+                action="Informe um valor para pesquisa por apelido.",
+            )
+        return apelido
+
     @classmethod
     def criar(cls, dados: dict) -> dict | None:
-        if not isinstance(dados, dict) or not dados:
-            raise ValidationError(
-                message="Body JSON inválido ou ausente.",
-                action="Envie um JSON válido no corpo da requisição.",
-            )
 
         descricao_fisica = dados.get("descricao_fisica")
         apelido = dados.get("apelido")
         cpf = dados.get("cpf_opcional")
         nome_civil = dados.get("nome_civil")
 
-        if not apelido or not str(apelido).strip():
-            raise ValidationError(
-                message="Apelido inválido, esse dados é obrigatório.",
-                action="Tente Novamente.",
-            )
-
-        if not descricao_fisica or not str(descricao_fisica).strip():
-            raise ValidationError(
-                message="Descrição física inválida, esse dados é obrigatório.",
-                action="Tente Novamente.",
-            )
-
-        if cpf:
-            cpf = re.sub(r"\D", "", str(cpf))
-
-            if not cls.validar_cpf(cpf):
-                raise ValidationError(
-                    message="CPF inválido, não está de acordo com as normas formalizadas pela 'Receita Federal do Brasil'.",
-                    action="Tente Novamente.",
-                )
-
-        if nome_civil is not None:
-            nome_civil = str(nome_civil).strip()
-            if not nome_civil:
-                nome_civil = None
+        apelido = cls._validar_apelido_obrigatorio(apelido)
+        descricao_fisica = cls._validar_descricao_fisica_obrigatoria(descricao_fisica)
+        cpf = cls._validar_cpf_criacao(cpf)
+        nome_civil = cls._normalizar_nome_civil(nome_civil)
 
         query_insert = """
             INSERT INTO pessoa_rua(apelido, descricao_fisica, nome_civil, cpf_opcional)
             VALUES (%s, %s, %s, %s)
         """
 
-        apelido = apelido.strip()
-        descricao_fisica = descricao_fisica.strip()
         params_insert = (
             apelido,
             descricao_fisica,
@@ -114,12 +165,7 @@ class PessoaRuaModel(Database):
 
     @classmethod
     def buscar_por_apelido(cls, apelido: str) -> list[dict]:
-        apelido = (apelido or "").strip()
-        if not apelido:
-            raise ValidationError(
-                message="Parâmetro 'apelido' é obrigatório.",
-                action="Informe um valor para pesquisa por apelido.",
-            )
+        apelido = cls._validar_apelido_busca(apelido)
 
         termo = f"%{apelido}%"
         query = """
@@ -134,11 +180,6 @@ class PessoaRuaModel(Database):
 
     @classmethod
     def atualizar(cls, pessoa_id: int, dados: dict) -> dict | None:
-        if not isinstance(dados, dict) or not dados:
-            raise ValidationError(
-                message="Body JSON inválido ou ausente.",
-                action="Envie um JSON válido no corpo da requisição.",
-            )
 
         campos = []
         valores = []
@@ -147,45 +188,24 @@ class PessoaRuaModel(Database):
         dados_tratados = {}
 
         if "apelido" in dados:
-            apelido = (dados.get("apelido") or "").strip()
-            if not apelido:
-                raise ValidationError(
-                    message="Apelido inválido, esse dados é obrigatório.",
-                    action="Tente Novamente.",
-                )
-            dados_tratados["apelido"] = apelido
+            dados_tratados["apelido"] = cls._validar_apelido_obrigatorio(
+                dados.get("apelido")
+            )
 
         if "descricao_fisica" in dados:
-            descricao_fisica = (dados.get("descricao_fisica") or "").strip()
-            if not descricao_fisica:
-                raise ValidationError(
-                    message="Descrição física inválida, esse dados é obrigatório.",
-                    action="Tente Novamente.",
-                )
-            dados_tratados["descricao_fisica"] = descricao_fisica
+            dados_tratados["descricao_fisica"] = (
+                cls._validar_descricao_fisica_obrigatoria(dados.get("descricao_fisica"))
+            )
 
         if "nome_civil" in dados:
-            nome_civil = dados.get("nome_civil")
-            if nome_civil is None:
-                dados_tratados["nome_civil"] = None
-
-            else:
-                nome_civil = str(nome_civil).strip()
-                dados_tratados["nome_civil"] = nome_civil or None
+            dados_tratados["nome_civil"] = cls._normalizar_nome_civil(
+                dados.get("nome_civil")
+            )
 
         if "cpf_opcional" in dados:
-            cpf = dados.get("cpf_opcional")
-            if cpf is None or not str(cpf).strip():
-                dados_tratados["cpf_opcional"] = None
-
-            else:
-                cpf = re.sub(r"\D", "", str(cpf)).strip()
-                if not cls.validar_cpf(cpf):
-                    raise ValidationError(
-                        message="CPF inválido, não está de acordo com as normas formalizadas pela 'Receita Federal do Brasil'.",
-                        action="Tente Novamente.",
-                    )
-                dados_tratados["cpf_opcional"] = cpf
+            dados_tratados["cpf_opcional"] = cls._validar_cpf_atualizacao(
+                dados.get("cpf_opcional")
+            )
 
         for campo in permitidos:
             if campo in dados_tratados:
@@ -207,13 +227,7 @@ class PessoaRuaModel(Database):
 
     @classmethod
     def atualizar_risco(cls, pessoa_id: int, nivel_risco: str) -> dict | None:
-        niveis_validos = {"baixo", "medio", "alto", "critico"}
-
-        if nivel_risco not in niveis_validos:
-            raise ValidationError(
-                message=f"nivel_risco inválido: '{nivel_risco}'.",
-                action=f"Use um dos valores válidos: {sorted(niveis_validos)}.",
-            )
+        nivel_risco = cls._validar_nivel_risco_atualizacao(nivel_risco)
 
         query_update = """
                 UPDATE pessoa_rua
@@ -234,11 +248,7 @@ class PessoaRuaModel(Database):
         nivel_risco: str | None = None,
         cpf_opcional: str | None = None,
     ) -> list[dict]:
-        if nivel_risco and nivel_risco not in {"baixo", "medio", "alto", "critico"}:
-            raise ValidationError(
-                message="nivel_risco inválido.",
-                action="Use um dos valores: baixo, medio, alto ou critico.",
-            )
+        cls._validar_nivel_risco_filtro(nivel_risco)
 
         query_base = "SELECT * FROM pessoa_rua"
         filtros = []

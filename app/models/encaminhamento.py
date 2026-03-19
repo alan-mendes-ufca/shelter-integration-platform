@@ -32,37 +32,48 @@ class EncaminhamentoModel(Database):
         )
         return rows[0] if rows else None
 
-    @classmethod
-    def criar(cls, dados):
-        if not isinstance(dados, dict) or not dados:
-            raise ValidationError(
-                message="Body JSON inválido ou ausente.",
-                action="Envie um JSON válido no corpo da requisição.",
-            )
-
-        id_atendimento = cls._validar_inteiro_positivo(
-            dados.get("id_atendimento_fk"), "id_atendimento_fk"
-        )
-        orgao_destino = str(dados.get("orgaoDestino") or "").strip()
-        motivo = str(dados.get("motivo") or "").strip()
-        prioridade = str(dados.get("prioridade") or "").strip().lower()
-
+    @staticmethod
+    def _validar_orgao_destino(orgao_destino: object) -> str:
+        orgao_destino = str(orgao_destino or "").strip()
         if not orgao_destino:
             raise ValidationError(
                 message="O campo 'orgaoDestino' é obrigatório.",
                 action="Informe o órgão de destino do encaminhamento.",
             )
+        return orgao_destino
+
+    @staticmethod
+    def _validar_motivo(motivo: object) -> str:
+        motivo = str(motivo or "").strip()
         if not motivo:
             raise ValidationError(
                 message="O campo 'motivo' é obrigatório.",
                 action="Informe o motivo do encaminhamento.",
             )
+        return motivo
+
+    @classmethod
+    def _validar_prioridade(cls, prioridade: object) -> str:
+        prioridade = str(prioridade or "").strip().lower()
         if prioridade not in cls.PRIORIDADES_VALIDAS:
             raise ValidationError(
                 message="O campo 'prioridade' é inválido.",
                 action="Use uma das prioridades: baixa, media ou alta.",
             )
+        return prioridade
 
+    @classmethod
+    def _validar_status(cls, status: object) -> str:
+        status = str(status or "").strip().lower()
+        if status not in cls.STATUS_VALIDOS:
+            raise ValidationError(
+                message="Status de encaminhamento inválido.",
+                action="Use: pendente, atendido, resolvido ou cancelado.",
+            )
+        return status
+
+    @classmethod
+    def _validar_atendimento_existe(cls, id_atendimento: int) -> None:
         atendimento = cls.query(
             "SELECT id_atendimento FROM atendimento WHERE id_atendimento = %s",
             (id_atendimento,),
@@ -72,6 +83,25 @@ class EncaminhamentoModel(Database):
                 message="Atendimento não encontrado para encaminhamento.",
                 action="Verifique o 'id_atendimento_fk' informado.",
             )
+
+    @staticmethod
+    def _validar_cancelamento_permitido(status_acompanhamento: str) -> None:
+        if status_acompanhamento != "pendente":
+            raise ValidationError(
+                message="Somente encaminhamentos pendentes podem ser cancelados.",
+                action="Atualize o status conforme o fluxo de acompanhamento.",
+            )
+
+    @classmethod
+    def criar(cls, dados):
+
+        id_atendimento = cls._validar_inteiro_positivo(
+            dados.get("id_atendimento_fk"), "id_atendimento_fk"
+        )
+        orgao_destino = cls._validar_orgao_destino(dados.get("orgaoDestino"))
+        motivo = cls._validar_motivo(dados.get("motivo"))
+        prioridade = cls._validar_prioridade(dados.get("prioridade"))
+        cls._validar_atendimento_existe(id_atendimento)
 
         sql = """
             INSERT INTO encaminhamento
@@ -99,12 +129,7 @@ class EncaminhamentoModel(Database):
 
     @classmethod
     def listar_por_status(cls, status: str) -> list[dict]:
-        status = str(status or "").strip().lower()
-        if status not in cls.STATUS_VALIDOS:
-            raise ValidationError(
-                message="Status de encaminhamento inválido.",
-                action="Use: pendente, atendido, resolvido ou cancelado.",
-            )
+        status = cls._validar_status(status)
 
         sql = """
             SELECT * FROM encaminhamento
@@ -119,12 +144,7 @@ class EncaminhamentoModel(Database):
         encaminhamento_id = cls._validar_inteiro_positivo(
             id_encaminhamento_pk, "id_encaminhamento_pk"
         )
-        novo_status = str(novo_status or "").strip().lower()
-        if novo_status not in cls.STATUS_VALIDOS:
-            raise ValidationError(
-                message="Status de encaminhamento inválido.",
-                action="Use: pendente, atendido, resolvido ou cancelado.",
-            )
+        novo_status = cls._validar_status(novo_status)
 
         encaminhamento_atual = cls._buscar_por_id(encaminhamento_id)
         if not encaminhamento_atual:
@@ -154,11 +174,9 @@ class EncaminhamentoModel(Database):
                 action="Verifique o ID informado.",
             )
 
-        if encaminhamento_atual.get("status_acompanhamento") != "pendente":
-            raise ValidationError(
-                message="Somente encaminhamentos pendentes podem ser cancelados.",
-                action="Atualize o status conforme o fluxo de acompanhamento.",
-            )
+        cls._validar_cancelamento_permitido(
+            encaminhamento_atual.get("status_acompanhamento")
+        )
 
         sql = """
             UPDATE encaminhamento

@@ -101,6 +101,28 @@ class AtendimentoModel(Database):
             )
         return atendimento_atual
 
+    @staticmethod
+    def _validar_filtros_listagem(filtros: dict) -> tuple[int, str, str]:
+        id_abrigo_raw = str((filtros or {}).get("id_abrigo", "")).strip()
+        data_inicio = str((filtros or {}).get("data_inicio", "")).strip()
+        data_fim = str((filtros or {}).get("data_fim", "")).strip()
+
+        if not id_abrigo_raw or not data_inicio or not data_fim:
+            raise ValidationError(
+                message="Parâmetros obrigatórios ausentes para filtragem.",
+                action="Envie 'id_abrigo', 'data_inicio' e 'data_fim' na query string.",
+            )
+
+        try:
+            id_abrigo = int(id_abrigo_raw)
+        except ValueError as err:
+            raise ValidationError(
+                message="O parâmetro 'id_abrigo' deve ser numérico.",
+                action="Informe um id_abrigo inteiro e válido.",
+            ) from err
+
+        return id_abrigo, data_inicio, data_fim
+
     @classmethod
     def registrar(cls, data: dict) -> dict | None:
         cls._validar_dados_registro(data)
@@ -182,23 +204,7 @@ class AtendimentoModel(Database):
 
     @classmethod
     def listar_filtrados(cls, filtros: dict) -> list[dict]:
-        id_abrigo_raw = str((filtros or {}).get("id_abrigo", "")).strip()
-        data_inicio = str((filtros or {}).get("data_inicio", "")).strip()
-        data_fim = str((filtros or {}).get("data_fim", "")).strip()
-
-        if not id_abrigo_raw or not data_inicio or not data_fim:
-            raise ValidationError(
-                message="Parâmetros obrigatórios ausentes para filtragem.",
-                action="Envie 'id_abrigo', 'data_inicio' e 'data_fim' na query string.",
-            )
-
-        try:
-            id_abrigo = int(id_abrigo_raw)
-        except ValueError as err:
-            raise ValidationError(
-                message="O parâmetro 'id_abrigo' deve ser numérico.",
-                action="Informe um id_abrigo inteiro e válido.",
-            ) from err
+        id_abrigo, data_inicio, data_fim = cls._validar_filtros_listagem(filtros)
 
         return cls.listar_por_abrigo_e_periodo(
             id_abrigo=id_abrigo,

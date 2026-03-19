@@ -42,11 +42,6 @@ class ConsentimentoModel(Database):
         - validade
 
         """
-        if not isinstance(dados, dict) or not dados:
-            raise ValidationError(
-                message="Body JSON inválido ou ausente.",
-                action="Envie um JSON válido no corpo da requisição.",
-            )
 
         #  Implementar
         observacao = dados.get("observacao")

@@ -17,11 +17,7 @@ class PessoaModel(Database):
 
     @staticmethod
     def _payload_obrigatorio(dados: object) -> dict:
-        if not isinstance(dados, dict) or not dados:
-            raise ValidationError(
-                message="Body JSON inválido ou ausente.",
-                action="Envie um JSON válido no corpo da requisição.",
-            )
+
         return dados
 
     @staticmethod

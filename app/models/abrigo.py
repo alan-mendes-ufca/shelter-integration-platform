@@ -33,39 +33,34 @@ class AbrigoModel(Database):
     Gerencia o cadastro de abrigos e o contador de vagas disponíveis.
     """
 
-    @classmethod
-    def criar(cls, dados: dict) -> dict | None:
-        """
-        Cadastra um novo abrigo e popula automaticamente suas camas em vaga_cama.
-
-        Args:
-            dados (dict): Obrigatórios: 'nome', 'endereco', 'capacidade_total'
-                          Opcionais: 'telefone'
-
-        Returns:
-            dict | None: Abrigo recém-criado.
-        """
-        if not isinstance(dados, dict) or not dados:
-            raise ValidationError(
-                message="Body JSON inválido ou ausente.",
-                action="Envie um JSON válido no corpo da requisição.",
-            )
-
+    @staticmethod
+    def _validar_nome(dados: dict):
         nome = str(dados.get("nome") or "").strip()
-        endereco = str(dados.get("endereco") or "").strip()
-        capacidade_total = dados.get("capacidade_total")
-        telefone = dados.get("telefone")
 
         if not nome:
             raise ValidationError(
                 message="O campo 'nome' é obrigatório.",
                 action="Informe um nome válido para o abrigo.",
             )
+
+        return nome
+
+    @staticmethod
+    def _validar_endereco(dados: dict):
+        endereco = str(dados.get("endereco") or "").strip()
+
         if not endereco:
             raise ValidationError(
                 message="O campo 'endereco' é obrigatório.",
                 action="Informe um endereço válido para o abrigo.",
             )
+
+        return endereco
+
+    @staticmethod
+    def _validar_capacidade(dados: dict):
+        capacidade_total = dados.get("capacidade_total")
+
         if capacidade_total is None:
             raise ValidationError(
                 message="O campo 'capacidade_total' é obrigatório.",
@@ -86,8 +81,34 @@ class AbrigoModel(Database):
                 action="Informe um valor maior que zero para 'capacidade_total'.",
             )
 
+        return capacidade_total
+
+    @staticmethod
+    def _validar_telefone(dados: dict):
+        telefone = dados.get("telefone")
+
         if telefone:
             telefone = str(telefone).strip() or None
+
+        return telefone
+
+    @classmethod
+    def criar(cls, dados: dict) -> dict | None:
+        """
+        Cadastra um novo abrigo e popula automaticamente suas camas em vaga_cama.
+
+        Args:
+            dados (dict): Obrigatórios: 'nome', 'endereco', 'capacidade_total'
+                          Opcionais: 'telefone'
+
+        Returns:
+            dict | None: Abrigo recém-criado.
+        """
+
+        nome = cls._validar_nome(dados)
+        endereco = cls._validar_endereco(dados)
+        capacidade_total = cls._validar_capacidade(dados)
+        telefone = cls._validar_telefone(dados)
 
         abrigo_id = cls.query(
             """

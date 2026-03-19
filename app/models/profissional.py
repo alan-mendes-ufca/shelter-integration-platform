@@ -10,39 +10,45 @@ class ProfissionalModel(Database):
     psicólogos, coordenadores, etc.
     """
 
-    @classmethod
-    def criar(cls, dados: dict) -> dict | None:
-        if not isinstance(dados, dict) or not dados:
-            raise ValidationError(
-                message="Body JSON inválido ou ausente.",
-                action="Envie um JSON válido no corpo da requisição.",
-            )
-
-        id_pessoa = dados.get("id_pessoa")
-        cargo = dados.get("cargo")
-        registro_conselho = dados.get("registro_conselho")
-
+    @staticmethod
+    def _validar_id_pessoa_obrigatorio(id_pessoa: object) -> object:
         if not id_pessoa:
             raise ValidationError(
                 message="O campo 'id_pessoa' é obrigatório.",
                 action="Informe um valor válido para 'id_pessoa'.",
             )
+        return id_pessoa
 
+    @staticmethod
+    def _validar_cargo_obrigatorio(cargo: object) -> str:
         if not cargo or not str(cargo).strip():
             raise ValidationError(
                 message="O campo 'cargo' é obrigatório.",
                 action="Informe um valor válido para 'cargo'.",
             )
+        return str(cargo).strip()
 
+    @staticmethod
+    def _normalizar_registro_conselho(registro_conselho: object) -> object:
         if registro_conselho:
-            registro_conselho = str(registro_conselho).strip()
+            return str(registro_conselho).strip()
+        return registro_conselho
+
+    @classmethod
+    def criar(cls, dados: dict) -> dict | None:
+
+        id_pessoa = cls._validar_id_pessoa_obrigatorio(dados.get("id_pessoa"))
+        cargo = cls._validar_cargo_obrigatorio(dados.get("cargo"))
+        registro_conselho = cls._normalizar_registro_conselho(
+            dados.get("registro_conselho")
+        )
 
         query_insert = """
             INSERT INTO profissional(id_pessoa, cargo, registro_conselho)
             VALUES (%s, %s, %s)
         """
 
-        params_insert = (id_pessoa, str(cargo).strip(), registro_conselho)
+        params_insert = (id_pessoa, cargo, registro_conselho)
 
         cls.query(query_insert, params_insert)
 
