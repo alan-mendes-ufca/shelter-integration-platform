@@ -39,6 +39,14 @@ class ProntuarioModel(Database):
         return nivel_risco
 
     @classmethod
+    def _validar_pessoa_sem_prontuario(cls, id_pessoa_rua: object) -> None:
+        if cls.buscar_por_id(id_pessoa_rua):
+            raise ValidationError(
+                message="A pessoa informada já possui prontuário cadastrado.",
+                action="Utilize o endpoint de atualização para alterar o prontuário existente.",
+            )
+
+    @classmethod
     def criar(cls, dados: dict) -> dict | None:
 
         id_pessoa_rua = dados.get("id_pessoa_rua")
@@ -51,6 +59,7 @@ class ProntuarioModel(Database):
             id_consentimento,
             id_profissional,
         )
+        cls._validar_pessoa_sem_prontuario(id_pessoa_rua)
 
         query_insert = """
             INSERT INTO prontuario (id_pessoa_rua, id_consentimento, id_profissional, resumo_historico)
