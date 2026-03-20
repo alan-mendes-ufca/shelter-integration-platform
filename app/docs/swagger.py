@@ -693,12 +693,15 @@ SWAGGER_TEMPLATE = {
                 ),
             }
         },
-        "/consentimentos/{consentimento_id}/revogar": {
+        "/consentimentos/{id_pessoa_rua}/revogar": {
             "put": {
                 "tags": ["Consentimentos"],
                 "summary": "Revoga um consentimento existente.",
                 "parameters": [
-                    _path_param("consentimento_id", "ID do consentimento a revogar."),
+                    _path_param(
+                        "id_pessoa_rua",
+                        "ID da pessoa cujo consentimento será revogado.",
+                    ),
                     _body_param(
                         "ConsentimentoRevogacaoInput",
                         "Observação opcional da revogação.",
@@ -755,17 +758,12 @@ SWAGGER_TEMPLATE = {
                 "tags": ["Atendimentos"],
                 "summary": "Filtra atendimentos por abrigo e período.",
                 "parameters": [
-                    _query_param(
-                        "id_abrigo", "ID do abrigo para filtragem.", required=True
-                    ),
+                    _query_param("id_abrigo", "ID do abrigo para filtragem."),
                     _query_param(
                         "data_inicio",
                         "Data inicial no formato YYYY-MM-DD.",
-                        required=True,
                     ),
-                    _query_param(
-                        "data_fim", "Data final no formato YYYY-MM-DD.", required=True
-                    ),
+                    _query_param("data_fim", "Data final no formato YYYY-MM-DD."),
                 ],
                 "responses": _default_responses(
                     success={
