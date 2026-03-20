@@ -51,13 +51,10 @@ def test_with_valid_pessoa_id():
 def test_with_missing_filter_params():
     response = requests.get("http://127.0.0.1:5000/api/v1/atendimentos", params={})
 
-    assert response.status_code == 400
-    assert response.json() == {
-        "name": "ValidationError",
-        "message": "Parâmetros obrigatórios ausentes para filtragem.",
-        "action": "Envie 'id_abrigo', 'data_inicio' e 'data_fim' na query string.",
-        "status_code": 400,
-    }
+    assert response.status_code == 200
+
+    data = response.json()
+    assert isinstance(data, list)
 
 
 def test_with_filter_after_register():

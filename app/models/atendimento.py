@@ -1,5 +1,6 @@
-from infra.database import Database  # noqa: F401 — usado nos TODOs abaixo
+from infra.database import Database
 from infra.erros import NotFoundError, ValidationError
+
 from .abrigo import AbrigoModel
 from .pessoa_rua import PessoaRuaModel
 from .profissional import ProfissionalModel
@@ -102,24 +103,22 @@ class AtendimentoModel(Database):
         return atendimento_atual
 
     @staticmethod
-    def _validar_filtros_listagem(filtros: dict) -> tuple[int, str, str]:
+    def _validar_filtros_listagem(
+        filtros: dict,
+    ) -> tuple[int | None, str | None, str | None]:
         id_abrigo_raw = str((filtros or {}).get("id_abrigo", "")).strip()
-        data_inicio = str((filtros or {}).get("data_inicio", "")).strip()
-        data_fim = str((filtros or {}).get("data_fim", "")).strip()
+        data_inicio = str((filtros or {}).get("data_inicio", "")).strip() or None
+        data_fim = str((filtros or {}).get("data_fim", "")).strip() or None
 
-        if not id_abrigo_raw or not data_inicio or not data_fim:
-            raise ValidationError(
-                message="Parâmetros obrigatórios ausentes para filtragem.",
-                action="Envie 'id_abrigo', 'data_inicio' e 'data_fim' na query string.",
-            )
-
-        try:
-            id_abrigo = int(id_abrigo_raw)
-        except ValueError as err:
-            raise ValidationError(
-                message="O parâmetro 'id_abrigo' deve ser numérico.",
-                action="Informe um id_abrigo inteiro e válido.",
-            ) from err
+        id_abrigo = None
+        if id_abrigo_raw:
+            try:
+                id_abrigo = int(id_abrigo_raw)
+            except ValueError as err:
+                raise ValidationError(
+                    message="O parâmetro 'id_abrigo' deve ser numérico.",
+                    action="Informe um id_abrigo inteiro e válido.",
+                ) from err
 
         return id_abrigo, data_inicio, data_fim
 
@@ -187,30 +186,30 @@ class AtendimentoModel(Database):
         return result or []
 
     @classmethod
-    def listar_por_abrigo_e_periodo(
-        cls, id_abrigo: int, data_inicio: str, data_fim: str
-    ) -> list[dict]:
-        abrigo_id = cls._validar_abrigo(id_abrigo)
-        query = """
-            SELECT *
-            FROM atendimento
-            WHERE id_abrigo = %s
-              AND realizado_em BETWEEN %s AND CONCAT(%s, ' 23:59:59')
-            ORDER BY realizado_em DESC;
-        """
-        params = (abrigo_id, data_inicio, data_fim)
-        result = cls.query(query, params)
-        return result or []
-
-    @classmethod
     def listar_filtrados(cls, filtros: dict) -> list[dict]:
         id_abrigo, data_inicio, data_fim = cls._validar_filtros_listagem(filtros)
 
-        return cls.listar_por_abrigo_e_periodo(
-            id_abrigo=id_abrigo,
-            data_inicio=data_inicio,
-            data_fim=data_fim,
-        )
+        conditions = []
+        params = []
+
+        if id_abrigo is not None:
+            cls._validar_abrigo(id_abrigo)
+            conditions.append("id_abrigo = %s")
+            params.append(id_abrigo)
+
+        if data_inicio:
+            conditions.append("realizado_em >= %s")
+            params.append(data_inicio)
+
+        if data_fim:
+            conditions.append("realizado_em <= CONCAT(%s, ' 23:59:59')")
+            params.append(data_fim)
+
+        where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+        query = f"SELECT * FROM atendimento {where} ORDER BY realizado_em DESC;"
+
+        result = cls.query(query, params if params else None)
+        return result or []
 
     @classmethod
     def atualizar(cls, atendimento_id: int, dados: dict) -> dict | None:
