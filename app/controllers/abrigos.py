@@ -124,8 +124,8 @@ def registrar_entrada():
     if not dados:
         return jsonify({"erro": "Body JSON inválido ou ausente."}), 400
 
-    pessoa_id = dados.get("pessoa_id")
-    abrigo_id = dados.get("abrigo_id")
+    pessoa_id = dados.get("id_pessoa_rua")
+    abrigo_id = dados.get("id_abrigo")
 
     if not pessoa_id or not abrigo_id:
         return (
@@ -174,8 +174,10 @@ def registrar_saida():
     if not dados:
         return jsonify({"erro": "Body JSON inválido ou ausente."}), 400
 
-    numero_cama = dados.get("numero_cama")
-    abrigo_id = dados.get("abrigo_id")
+    numero_cama = dados.get("numero_cama_fk") or dados.get("numero_cama")
+    abrigo_id = (
+        dados.get("id_abrigo_fk") or dados.get("id_abrigo") or dados.get("abrigo_id")
+    )
     motivo_saida = dados.get("motivo_saida")
 
     if not numero_cama or not abrigo_id:
