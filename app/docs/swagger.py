@@ -231,7 +231,6 @@ SWAGGER_TEMPLATE = {
         "Consentimento": {
             "type": "object",
             "properties": {
-                "id_consentimento": {"type": "integer", "example": 1},
                 "id_pessoa_rua": {"type": "integer", "example": 1},
                 "ativo": {"type": "boolean", "example": True},
                 "registrado_em": {
@@ -367,7 +366,6 @@ SWAGGER_TEMPLATE = {
             "type": "object",
             "properties": {
                 "id_pessoa_rua": {"type": "integer", "example": 1},
-                "id_consentimento": {"type": "integer", "example": 1},
                 "id_profissional": {"type": "integer", "example": 1},
                 "data_criacao": {"type": "string", "example": "2026-03-17 23:54:00"},
                 "resumo_historico": {
@@ -375,15 +373,13 @@ SWAGGER_TEMPLATE = {
                     "example": "Primeiro atendimento realizado. O indivíduo aceitou o acolhimento.",
                 },
                 "apelido": {"type": "string", "example": "João do Chapéu"},
-                "grau_vulnerabilidade": {"type": "string", "example": "alto"},
             },
         },
         "ProntuarioCreateInput": {
             "type": "object",
-            "required": ["id_pessoa_rua", "id_consentimento", "id_profissional"],
+            "required": ["id_pessoa_rua", "id_profissional"],
             "properties": {
                 "id_pessoa_rua": {"type": "integer", "example": 1},
-                "id_consentimento": {"type": "integer", "example": 1},
                 "id_profissional": {"type": "integer", "example": 1},
                 "resumo_historico": {
                     "type": "string",
@@ -399,12 +395,6 @@ SWAGGER_TEMPLATE = {
                     "example": "Paciente apresentou melhora no quadro.",
                 },
                 "id_profissional": {"type": "integer", "example": 2},
-                "id_consentimento": {"type": "integer", "example": 1},
-                "grau_vulnerabilidade": {
-                    "type": "string",
-                    "enum": ["baixo", "medio", "alto", "critico"],
-                    "example": "baixo",
-                },
             },
         },
         "Abrigo": {
@@ -433,12 +423,13 @@ SWAGGER_TEMPLATE = {
         "VagaCama": {
             "type": "object",
             "properties": {
-                "id_vaga": {"type": "integer", "example": 21},
-                "id_pessoa_rua": {"type": "integer", "example": 2},
-                "abrigo_id": {"type": "integer", "example": 3},
-                "status": {"type": "string", "example": "ocupada"},
-                "entrada_em": {"type": "string", "example": "2026-03-05 18:10"},
-                "saida_em": {"type": "string", "example": "2026-03-06 08:00"},
+                "numero_cama_pk": {"type": "integer", "example": 3},
+                "id_abrigo_fk": {"type": "integer", "example": 1},
+                "status": {
+                    "type": "string",
+                    "enum": ["livre", "ocupada"],
+                    "example": "livre",
+                },
             },
         },
         # ── Estadia ───────────────────────────────────────────────────────────
@@ -458,18 +449,18 @@ SWAGGER_TEMPLATE = {
         },
         "EstadiaEntradaInput": {
             "type": "object",
-            "required": ["pessoa_id", "abrigo_id"],
+            "required": ["id_pessoa_rua", "id_abrigo"],
             "properties": {
-                "pessoa_id": {"type": "integer", "example": 2},
-                "abrigo_id": {"type": "integer", "example": 1},
+                "id_pessoa_rua": {"type": "integer", "example": 2},
+                "id_abrigo": {"type": "integer", "example": 1},
             },
         },
         "EstadiaSaidaInput": {
             "type": "object",
-            "required": ["numero_cama", "abrigo_id"],
+            "required": ["numero_cama", "id_abrigo"],
             "properties": {
                 "numero_cama": {"type": "integer", "example": 3},
-                "abrigo_id": {"type": "integer", "example": 1},
+                "id_abrigo": {"type": "integer", "example": 1},
                 "motivo_saida": {
                     "type": "string",
                     "example": "Transferido para outro abrigo",

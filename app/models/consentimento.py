@@ -150,6 +150,6 @@ class ConsentimentoModel(Database):
             SELECT *
             FROM consentimento
             WHERE id_pessoa_rua = %s
-            ORDER BY registrado_em DESC, id_consentimento DESC
+            ORDER BY registrado_em DESC, ativo DESC
         """
         return cls.query(query, (pessoa_id,)) or []

@@ -40,7 +40,20 @@ CREATE TABLE IF NOT EXISTS pessoa (
     nome        VARCHAR(120)    NOT NULL,
     senha       VARCHAR(255)    NOT NULL
 );
+-- =============================================================================
+-- TABELA: gestor
+-- Representa os gestores responsáveis por gerirem os abrigos
+-- que operam o sistema. Todo atendimento e encaminhamento precisa ter
+-- um profissional responsável para manter rastreabilidade.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS gestor (
+    id_gestor INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    id_pessoa INT UNSIGNED NOT NULL,
+    instituicao VARCHAR(50),
 
+    CONSTRAINT fk_gestor_pessoa FOREIGN KEY (id_pessoa) 
+        REFERENCES pessoa(id_pessoa) ON DELETE CASCADE
+);
 -- =============================================================================
 -- TABELA: profissional
 -- Representa os assistentes sociais, educadores e demais profissionais
@@ -81,8 +94,7 @@ CREATE TABLE IF NOT EXISTS pessoa_rua (
 -- Só bloqueia acesso ao prontuário (US02, US03).
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS consentimento (
-    id_consentimento    INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
-    id_pessoa_rua       INT UNSIGNED    NOT NULL,
+    id_pessoa_rua       INT UNSIGNED    PRIMARY KEY,
     ativo               BOOLEAN         NOT NULL DEFAULT TRUE,
     registrado_em       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     revogado_em         DATETIME,
@@ -101,17 +113,19 @@ CREATE TABLE IF NOT EXISTS consentimento (
 -- A lógica de bloqueio é feita na camada de aplicação (Python), não aqui.
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS prontuario (
-    id_prontuario       INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
-    id_pessoa_rua       INT UNSIGNED    UNIQUE NOT NULL,
-    id_consentimento    INT UNSIGNED    NOT NULL,
-    id_profissional     INT UNSIGNED    NOT NULL,
-    data_criacao        DATETIME        DEFAULT CURRENT_TIMESTAMP,
-    resumo_historico    TEXT,
-
-    FOREIGN KEY (id_pessoa_rua)   REFERENCES pessoa_rua(id_pessoa_rua)   ON DELETE CASCADE,
-    FOREIGN KEY (id_profissional) REFERENCES profissional(id_profissional)
-    -- MOCK: Lembre-se de deixar comentado até o Membro 2 fazer a tabela dele
-    -- FOREIGN KEY (id_consentimento) REFERENCES consentimento(id_consentimento)
+    id_pessoa_rua INT UNSIGNED PRIMARY KEY,
+    id_profissional INT UNSIGNED NOT NULL,
+    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    resumo_historico TEXT,
+    
+    CONSTRAINT fk_prontuario_pessoa FOREIGN KEY (id_pessoa_rua)
+        REFERENCES pessoa_rua(id_pessoa_rua) ON DELETE CASCADE,
+    
+    CONSTRAINT fk_prontuario_consentimento FOREIGN KEY (id_pessoa_rua)
+        REFERENCES consentimento(id_pessoa_rua) ON DELETE RESTRICT,
+    
+    CONSTRAINT fk_prontuario_profissional FOREIGN KEY (id_profissional)
+        REFERENCES profissional(id_profissional) ON DELETE RESTRICT
 );
 
 -- =============================================================================
@@ -230,22 +244,22 @@ CREATE TABLE IF NOT EXISTS encaminhamento (
 -- Registra quem comandou qual abrigo e em qual período.
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS historico_gestao (
-    id_gestor_fk    INT UNSIGNED    NOT NULL,
-    id_abrigo_fk    INT UNSIGNED    NOT NULL,
-    data_inicio_pk  DATETIME        NOT NULL,
+    id_gestor       INT UNSIGNED    NOT NULL,
+    id_abrigo       INT UNSIGNED    NOT NULL,
+    data_inicio     DATETIME        NOT NULL,
     data_fim        DATETIME,
 
-    PRIMARY KEY (id_gestor_fk, id_abrigo_fk, data_inicio_pk),
+    PRIMARY KEY (id_gestor, id_abrigo, data_inicio),
 
-    INDEX idx_hist_gestao_abrigo (id_abrigo_fk),
+    INDEX idx_hist_gestao_abrigo (id_abrigo),
     INDEX idx_hist_gestao_fim    (data_fim),
 
-    CONSTRAINT fk_hist_gestao_pessoa
-        FOREIGN KEY (id_gestor_fk) REFERENCES pessoa(id_pessoa)
+    CONSTRAINT fk_hist_gestao_gestor
+        FOREIGN KEY (id_gestor) REFERENCES gestor(id_gestor)
         ON DELETE RESTRICT,
 
     CONSTRAINT fk_hist_gestao_abrigo
-        FOREIGN KEY (id_abrigo_fk) REFERENCES abrigo(id_abrigo)
+        FOREIGN KEY (id_abrigo) REFERENCES abrigo(id_abrigo)
         ON DELETE RESTRICT
 );
 

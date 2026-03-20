@@ -16,17 +16,18 @@
 
 SET FOREIGN_KEY_CHECKS = 0;
 
-DROP TABLE IF EXISTS encaminhamento;
-DROP TABLE IF EXISTS estadia;       -- substitui vaga
-DROP TABLE IF EXISTS vaga_cama;     -- substitui vaga
 DROP TABLE IF EXISTS atuacao;
+DROP TABLE IF EXISTS historico_gestao;
+DROP TABLE IF EXISTS encaminhamento;
+DROP TABLE IF EXISTS estadia;
+DROP TABLE IF EXISTS vaga_cama;
 DROP TABLE IF EXISTS abrigo;
 DROP TABLE IF EXISTS atendimento;
 DROP TABLE IF EXISTS prontuario;
 DROP TABLE IF EXISTS consentimento;
 DROP TABLE IF EXISTS pessoa_rua;
 DROP TABLE IF EXISTS profissional;
-DROP TABLE IF EXISTS historico_gestao;
+DROP TABLE IF EXISTS gestor;
 DROP TABLE IF EXISTS pessoa;
 
 SET FOREIGN_KEY_CHECKS = 1;
