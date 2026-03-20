@@ -10,17 +10,18 @@ class ProntuarioModel(Database):
 
     @staticmethod
     def _validar_ids_obrigatorios_criacao(
-        id_pessoa_rua: object, id_consentimento: object, id_profissional: object
+        id_pessoa_rua: object, id_profissional: object
     ) -> None:
-        if not id_pessoa_rua or not id_consentimento or not id_profissional:
+        if not id_pessoa_rua or not id_profissional:
             raise ValidationError(
-                message="Os campos id_pessoa_rua, id_consentimento e id_profissional são obrigatórios.",
+                message="Os campos id_pessoa_rua e id_profissional são obrigatórios.",
                 action="Envie todos os campos obrigatórios para criação do prontuário.",
             )
 
     @staticmethod
-    def _validar_consentimento_ativo(id_consentimento_atual: int) -> None:
-        if id_consentimento_atual == 999:
+    def _validar_consentimento_ativo(ativo: bool) -> None:
+        # Agora recebe diretamente o valor booleano
+        if not ativo:
             raise ValidationError(
                 message="Edição bloqueada: o consentimento de uso de dados foi revogado.",
                 action="Solicite novo consentimento antes de editar o prontuário.",
@@ -50,24 +51,21 @@ class ProntuarioModel(Database):
     def criar(cls, dados: dict) -> dict | None:
 
         id_pessoa_rua = dados.get("id_pessoa_rua")
-        id_consentimento = dados.get("id_consentimento")
         id_profissional = dados.get("id_profissional")
         resumo_historico = dados.get("resumo_historico", "")
 
         cls._validar_ids_obrigatorios_criacao(
             id_pessoa_rua,
-            id_consentimento,
             id_profissional,
         )
         cls._validar_pessoa_sem_prontuario(id_pessoa_rua)
 
         query_insert = """
-            INSERT INTO prontuario (id_pessoa_rua, id_consentimento, id_profissional, resumo_historico)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO prontuario (id_pessoa_rua, id_profissional, resumo_historico)
+            VALUES (%s, %s, %s)
         """
         params_insert = (
             id_pessoa_rua,
-            id_consentimento,
             id_profissional,
             resumo_historico,
         )
@@ -78,13 +76,16 @@ class ProntuarioModel(Database):
 
     @classmethod
     def buscar_por_id(cls, id_pessoa_rua: int) -> dict | None:
+        # ATUALIZAÇÃO: Adicionado o INNER JOIN com consentimento para trazer o campo 'ativo'
         query_select = """
             SELECT
-                p.id_pessoa_rua, p.id_consentimento, p.id_profissional,
+                p.id_pessoa_rua, p.id_profissional,
                 p.data_criacao, p.resumo_historico,
-                pr.apelido, pr.nivel_risco as grau_vulnerabilidade
+                pr.apelido, pr.nivel_risco as grau_vulnerabilidade,
+                c.ativo
             FROM prontuario p
             INNER JOIN pessoa_rua pr ON p.id_pessoa_rua = pr.id_pessoa_rua
+            INNER JOIN consentimento c ON p.id_pessoa_rua = c.id_pessoa_rua
             WHERE p.id_pessoa_rua = %s
         """
         rows = cls.query(query_select, (id_pessoa_rua,))
@@ -100,10 +101,9 @@ class ProntuarioModel(Database):
         if not prontuario_atual:
             return None
 
-        id_consentimento_atual = prontuario_atual["id_consentimento"]
-
-        # MOCK PARA CONSENTIMENTO REVOGADO
-        cls._validar_consentimento_ativo(id_consentimento_atual)
+        # Agora pega o status 'ativo' real vindo do banco de dados
+        ativo_atual = prontuario_atual.get("ativo")
+        cls._validar_consentimento_ativo(ativo_atual)
 
         campos_prontuario = []
         valores_prontuario = []
@@ -116,9 +116,7 @@ class ProntuarioModel(Database):
             campos_prontuario.append("id_profissional = %s")
             valores_prontuario.append(dados["id_profissional"])
 
-        if "id_consentimento" in dados:
-            campos_prontuario.append("id_consentimento = %s")
-            valores_prontuario.append(dados["id_consentimento"])
+        # O bloco de código que tentava salvar "id_consentimento" foi deletado daqui!
 
         if campos_prontuario:
             valores_prontuario.append(id_pessoa_rua)

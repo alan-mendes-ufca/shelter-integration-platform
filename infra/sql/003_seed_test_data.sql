@@ -50,7 +50,6 @@ VALUES
 
 -- Consentimento
 INSERT INTO consentimento (
-    id_consentimento,
     id_pessoa_rua,
     ativo,
     registrado_em,
@@ -58,26 +57,23 @@ INSERT INTO consentimento (
     observacao
 )
 VALUES
-    (1, 1, TRUE, CURRENT_TIMESTAMP, NULL, 'Consentimento ativo para uso de dados.'),
-    (2, 2, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Consentimento revogado a pedido da pessoa.'),
-    (3, 1, FALSE, DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 30 DAY), DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 7 DAY), 'Consentimento anterior revogado para atualizacao.'),
-    (4, 3, TRUE, DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 10 DAY), NULL, 'Consentimento ativo apos acolhimento.'),
-    (5, 4, FALSE, DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 4 DAY), DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY), 'Revogado por solicitacao da pessoa.'),
-    (6, 5, TRUE, DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 2 DAY), NULL, 'Consentimento ativo para acompanhamento psicossocial.');
+    (1, TRUE, CURRENT_TIMESTAMP, NULL, 'Consentimento ativo para uso de dados.'),
+    (2, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Consentimento revogado a pedido da pessoa.'),
+    (3, TRUE, DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 10 DAY), NULL, 'Consentimento ativo apos acolhimento.'),
+    (4, FALSE, DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 4 DAY), DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY), 'Revogado por solicitacao da pessoa.'),
+    (5, TRUE, DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 2 DAY), NULL, 'Consentimento ativo para acompanhamento psicossocial.');
 
 -- Prontuário
 INSERT INTO prontuario (
-    id_prontuario,
     id_pessoa_rua,
-    id_consentimento,
     id_profissional,
     data_criacao,
     resumo_historico
 )
 VALUES
-    (1, 1, 1, 1, CURRENT_TIMESTAMP, 'Pessoa acompanhada em atendimentos recorrentes.'),
-    (2, 3, 4, 2, DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 9 DAY), 'Historico de acolhimento com foco em reinsercao social.'),
-    (3, 5, 6, 4, DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 2 DAY), 'Acompanhamento psicossocial em andamento.');
+    (1, 1, CURRENT_TIMESTAMP, 'Pessoa acompanhada em atendimentos recorrentes.'),
+    (3, 2, DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 9 DAY), 'Historico de acolhimento com foco em reinsercao social.'),
+    (5, 4, DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 2 DAY), 'Acompanhamento psicossocial em andamento.');
 
 -- Abrigos
 INSERT INTO abrigo (
@@ -161,13 +157,18 @@ VALUES
     (3, 4, 'CAPS', 'Acompanhamento em saude mental.', 'alta', 'pendente'),
     (4, 5, 'CREAS Norte', 'Apoio para reintegracao familiar.', 'media', 'resolvido');
 
--- Historico de gestao
+-- Gestor
+INSERT INTO gestor (id_gestor, id_pessoa, instituicao)
+VALUES (1, 1, 'Prefeitura Municipal');
+
+-- Historico de gestao (MANTENHA ESTE BLOCO COMO JÁ ESTÁ)
 INSERT INTO historico_gestao (
-    id_gestor_fk,
-    id_abrigo_fk,
-    data_inicio_pk,
+    id_gestor, 
+    id_abrigo, 
+    data_inicio, 
     data_fim
 )
+
 VALUES
     (1, 1, DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 60 DAY), NULL),
     (1, 2, DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 45 DAY), NULL),
